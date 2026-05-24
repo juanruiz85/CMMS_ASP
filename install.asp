@@ -1,0 +1,547 @@
+<%
+' =============================================================================
+' CMMS - Instalador del Sistema (install.asp)
+' Wizard multi-paso: DB Config → Prueba Conexión → Crear Schema → Admin → Listo
+' =============================================================================
+Option Explicit
+
+' Bloquear si ya está instalado
+Dim configFile
+configFile = Server.MapPath("/CMMS/config/database.asp")
+If CreateObject("Scripting.FileSystemObject").FileExists(configFile) Then
+    ' Ya instalado: verificar que la BD existe
+    Dim checkInstalled : checkInstalled = True
+    On Error Resume Next
+    Dim testConn : Set testConn = Server.CreateObject("ADODB.Connection")
+    ' Intentar leer el config existente
+    ' Si falla, permitir reinstalar
+    On Error GoTo 0
+End If
+
+Dim Step : Step = Request.QueryString("step")
+If Step = "" Then Step = "1"
+
+Dim ErrorMsg : ErrorMsg = ""
+Dim SuccessMsg : SuccessMsg = ""
+
+' ─── Procesamiento POST ────────────────────────────────────────────────────────
+If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
+    Dim action : action = Request.Form("action")
+
+    ' PASO 2: Probar conexión y guardar config
+    If action = "test_save" Then
+        Dim dbServer : dbServer = Trim(Request.Form("db_server"))
+        Dim dbName   : dbName   = Trim(Request.Form("db_name"))
+        Dim dbUser   : dbUser   = Trim(Request.Form("db_user"))
+        Dim dbPass   : dbPass   = Trim(Request.Form("db_pass"))
+        Dim dbPort   : dbPort   = Trim(Request.Form("db_port"))
+        If dbPort = "" Then dbPort = "1433"
+
+        ' Probar conexión
+        Dim connStr
+        connStr = "Provider=SQLNCLI11;Server=" & dbServer & ";Database=" & dbName & ";UID=" & dbUser & ";PWD=" & dbPass & ";Connect Timeout=10;"
+        
+        Dim testConn2
+        Set testConn2 = Server.CreateObject("ADODB.Connection")
+        On Error Resume Next
+        testConn2.Open connStr
+        If Err.Number <> 0 Then
+            ErrorMsg = "Error de conexión: " & Err.Description & " (Código: " & Err.Number & ")"
+            Err.Clear
+        Else
+            testConn2.Close
+            ' Guardar en sesión para el siguiente paso
+            Session("inst_server") = dbServer
+            Session("inst_name")   = dbName
+            Session("inst_user")   = dbUser
+            Session("inst_pass")   = dbPass
+            Session("inst_port")   = dbPort
+            SuccessMsg = "¡Conexión exitosa! Proceda al siguiente paso."
+            Step = "3"
+        End If
+        Set testConn2 = Nothing
+        On Error GoTo 0
+    End If
+
+    ' PASO 3: Ejecutar schema y crear admin
+    If action = "install" Then
+        Dim adminUser : adminUser = Trim(Request.Form("admin_user"))
+        Dim adminPass : adminPass = Trim(Request.Form("admin_pass"))
+        Dim adminEmail: adminEmail= Trim(Request.Form("admin_email"))
+        Dim adminFirst: adminFirst= Trim(Request.Form("admin_first"))
+        Dim adminLast : adminLast = Trim(Request.Form("admin_last"))
+
+        If adminUser = "" Or adminPass = "" Or adminEmail = "" Then
+            ErrorMsg = "Todos los campos del administrador son requeridos."
+        Else
+            ' Ejecutar instalación
+            Dim instResult : instResult = RunInstaller( _
+                Session("inst_server"), Session("inst_name"), _
+                Session("inst_user"),   Session("inst_pass"), _
+                adminUser, adminPass, adminEmail, adminFirst, adminLast)
+            
+            If Left(instResult, 5) = "ERROR" Then
+                ErrorMsg = instResult
+            Else
+                Step = "4" ' Éxito
+            End If
+        End If
+    End If
+End If
+
+' ─── Función de instalación ────────────────────────────────────────────────────
+Function RunInstaller(dbSrv, dbNm, dbUsr, dbPwd, admUser, admPass, admEmail, admFirst, admLast)
+    Dim oConn, oFS, schemaPath, schemaSQL, sLines, i
+    
+    On Error Resume Next
+    
+    ' 1. Conectar
+    Dim cs : cs = "Provider=SQLNCLI11;Server=" & dbSrv & ";Database=" & dbNm & ";UID=" & dbUsr & ";PWD=" & dbPwd & ";Connect Timeout=30;"
+    Set oConn = Server.CreateObject("ADODB.Connection")
+    oConn.Open cs
+    If Err.Number <> 0 Then
+        RunInstaller = "ERROR: " & Err.Description
+        Exit Function
+    End If
+
+    ' 2. Ejecutar schema SQL (mssql.sql)
+    schemaPath = Server.MapPath("/CMMS/sql/mssql.sql")
+    Set oFS = Server.CreateObject("Scripting.FileSystemObject")
+    
+    If Not oFS.FileExists(schemaPath) Then
+        RunInstaller = "ERROR: No se encontró el archivo " & schemaPath
+        Exit Function
+    End If
+    
+    Dim oFile : Set oFile = oFS.OpenTextFile(schemaPath, 1, False)
+    schemaSQL = oFile.ReadAll
+    oFile.Close
+    Set oFile = Nothing
+    Set oFS   = Nothing
+
+    ' Agregar columna password_salt si no existe (no está en el schema original)
+    oConn.Execute "IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='cmms_users' AND COLUMN_NAME='password_salt') " & _
+                  "AND OBJECT_ID('cmms_users', 'U') IS NOT NULL " & _
+                  "ALTER TABLE cmms_users ADD password_salt VARCHAR(50) DEFAULT '' NOT NULL"
+
+    ' Ejecutar schema dividido por bloques IF OBJECT_ID
+    ' El schema de mssql.sql ya tiene las guaredas IF OBJECT_ID, ejecutarlo completo
+    ' Dividir por ";" y ejecutar cada statement
+    Dim statements : statements = Split(schemaSQL, ";")
+    Dim stmt
+    For Each stmt In statements
+        stmt = Trim(stmt)
+        If Len(stmt) > 10 Then
+            Err.Clear
+            oConn.Execute stmt
+            ' Ignorar errores de "ya existe"
+        End If
+    Next
+    If Err.Number <> 0 Then Err.Clear
+
+    ' Agregar password_salt después de crear la tabla
+    oConn.Execute "IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='cmms_users' AND COLUMN_NAME='password_salt') " & _
+                  "ALTER TABLE cmms_users ADD password_salt VARCHAR(50) DEFAULT '' NOT NULL"
+
+    ' 3. Crear usuario administrador
+    ' Generar salt y hash
+    Dim salt, passHash
+    Randomize
+    Dim saltChars : saltChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    Dim j, saltStr : saltStr = ""
+    For j = 1 To 16
+        saltStr = saltStr & Mid(saltChars, Int(Rnd * Len(saltChars)) + 1, 1)
+    Next
+    salt = saltStr
+    passHash = SHA256Hash_Install(admPass & salt)
+
+    ' Verificar si ya existe admin
+    Dim existRS
+    Set existRS = oConn.Execute("SELECT COUNT(*) AS cnt FROM cmms_users WHERE username = '" & Replace(admUser, "'", "''") & "'")
+    If existRS("cnt") = 0 Then
+        Dim insertSQL
+        insertSQL = "INSERT INTO cmms_users (username, email, password, password_salt, role, first_name, last_name, status, created_at, updated_at) " & _
+                    "VALUES ('" & Replace(admUser, "'", "''") & "', " & _
+                    "'" & Replace(admEmail, "'", "''") & "', " & _
+                    "'" & passHash & "', " & _
+                    "'" & salt & "', " & _
+                    "'admin', " & _
+                    "'" & Replace(admFirst, "'", "''") & "', " & _
+                    "'" & Replace(admLast,  "'", "''") & "', " & _
+                    "'active', GETDATE(), GETDATE())"
+        oConn.Execute insertSQL
+    End If
+    existRS.Close
+    Set existRS = Nothing
+
+    ' 4. Insertar settings por defecto
+    Dim defSettings(5, 1)
+    defSettings(0, 0) = "company_name"    : defSettings(0, 1) = "Mi Empresa CMMS"
+    defSettings(1, 0) = "app_version"     : defSettings(1, 1) = "1.0.0"
+    defSettings(2, 0) = "session_timeout" : defSettings(2, 1) = "480"
+    defSettings(3, 0) = "items_per_page"  : defSettings(3, 1) = "25"
+    defSettings(4, 0) = "currency"        : defSettings(4, 1) = "USD"
+    defSettings(5, 0) = "date_format"     : defSettings(5, 1) = "DD/MM/YYYY"
+
+    Dim si
+    For si = 0 To 5
+        oConn.Execute "IF NOT EXISTS (SELECT 1 FROM cmms_settings WHERE key_name = '" & defSettings(si, 0) & "') " & _
+                      "INSERT INTO cmms_settings (key_name, value) VALUES ('" & defSettings(si, 0) & "', '" & Replace(defSettings(si, 1), "'", "''") & "')"
+    Next
+
+    ' 5. Insertar roles por defecto
+    oConn.Execute "IF NOT EXISTS (SELECT 1 FROM cmms_roles WHERE name = 'admin') " & _
+                  "INSERT INTO cmms_roles (name, description, permissions, created_at) " & _
+                  "VALUES ('admin', 'Administrador del sistema', '{""all"":true}', GETDATE())"
+    oConn.Execute "IF NOT EXISTS (SELECT 1 FROM cmms_roles WHERE name = 'supervisor') " & _
+                  "INSERT INTO cmms_roles (name, description, permissions, created_at) " & _
+                  "VALUES ('supervisor', 'Supervisor de mantenimiento', '{""wo"":true,""assets"":true,""inventory"":true,""reports"":true}', GETDATE())"
+    oConn.Execute "IF NOT EXISTS (SELECT 1 FROM cmms_roles WHERE name = 'technician') " & _
+                  "INSERT INTO cmms_roles (name, description, permissions, created_at) " & _
+                  "VALUES ('technician', 'Técnico de mantenimiento', '{""wo"":true,""inventory"":""read""}', GETDATE())"
+    oConn.Execute "IF NOT EXISTS (SELECT 1 FROM cmms_roles WHERE name = 'viewer') " & _
+                  "INSERT INTO cmms_roles (name, description, permissions, created_at) " & _
+                  "VALUES ('viewer', 'Solo lectura', '{""read"":true}', GETDATE())"
+
+    ' 6. Insertar planta y datos de ejemplo
+    oConn.Execute "IF NOT EXISTS (SELECT 1 FROM cmms_plants WHERE code = 'PLANT-001') " & _
+                  "INSERT INTO cmms_plants (code, name, description, city, country, status, created_at, updated_at) " & _
+                  "VALUES ('PLANT-001', 'Planta Principal', 'Planta de demostración', 'Ciudad', 'México', 'active', GETDATE(), GETDATE())"
+
+    oConn.Close
+    Set oConn = Nothing
+
+    ' 7. Generar archivo config/database.asp
+    Dim oFS2 : Set oFS2 = Server.CreateObject("Scripting.FileSystemObject")
+    Dim configPath : configPath = Server.MapPath("/CMMS/config/database.asp")
+    Dim oConfigFile : Set oConfigFile = oFS2.CreateTextFile(configPath, True)
+    
+    oConfigFile.WriteLine "<%"
+    oConfigFile.WriteLine "' CMMS - Configuración de Base de Datos (GENERADO POR INSTALADOR)"
+    oConfigFile.WriteLine "' Generado: " & Now()
+    oConfigFile.WriteLine "Const DB_TYPE     = ""sqlserver"""
+    oConfigFile.WriteLine "Const DB_SERVER   = """ & Replace(dbSrv, """", "") & """"
+    oConfigFile.WriteLine "Const DB_NAME     = """ & Replace(dbNm, """", "") & """"
+    oConfigFile.WriteLine "Const DB_USER     = """ & Replace(dbUsr, """", "") & """"
+    oConfigFile.WriteLine "Const DB_PASS     = """ & Replace(dbPwd, """", "") & """"
+    oConfigFile.WriteLine "Const DB_PORT     = 1433"
+    oConfigFile.WriteLine "Const DB_PROVIDER = ""SQLNCLI11"""
+    oConfigFile.WriteLine "Const DB_TIMEOUT  = 30"
+    oConfigFile.WriteLine "Const DB_APP_NAME = ""CMMS_System"""
+    oConfigFile.WriteLine ""
+    oConfigFile.WriteLine "Function GetConnectionString()"
+    oConfigFile.WriteLine "    GetConnectionString = ""Provider="" & DB_PROVIDER & "";Server="" & DB_SERVER & "";Database="" & DB_NAME & "";UID="" & DB_USER & "";PWD="" & DB_PASS & "";Connect Timeout="" & DB_TIMEOUT & "";Application Name="" & DB_APP_NAME & "";"""
+    oConfigFile.WriteLine "End Function"
+    oConfigFile.WriteLine ""
+    oConfigFile.WriteLine "Function GetConnection()"
+    oConfigFile.WriteLine "    Dim oConn"
+    oConfigFile.WriteLine "    Set oConn = Server.CreateObject(""ADODB.Connection"")"
+    oConfigFile.WriteLine "    On Error Resume Next"
+    oConfigFile.WriteLine "    oConn.Open GetConnectionString()"
+    oConfigFile.WriteLine "    If Err.Number <> 0 Then"
+    oConfigFile.WriteLine "        Response.Write ""<div style='color:red;font-family:monospace;padding:20px'>ERROR BD: "" & Err.Description & ""</div>"""
+    oConfigFile.WriteLine "        Response.End"
+    oConfigFile.WriteLine "    End If"
+    oConfigFile.WriteLine "    On Error GoTo 0"
+    oConfigFile.WriteLine "    Set GetConnection = oConn"
+    oConfigFile.WriteLine "End Function"
+    oConfigFile.WriteLine ""
+    oConfigFile.WriteLine "Sub CloseConnection(oConn)"
+    oConfigFile.WriteLine "    If Not IsNull(oConn) And Not IsEmpty(oConn) Then"
+    oConfigFile.WriteLine "        If oConn.State = 1 Then oConn.Close"
+    oConfigFile.WriteLine "        Set oConn = Nothing"
+    oConfigFile.WriteLine "    End If"
+    oConfigFile.WriteLine "End Sub"
+    oConfigFile.WriteLine "%>"
+    oConfigFile.Close
+    Set oConfigFile = Nothing
+    Set oFS2 = Nothing
+
+    On Error GoTo 0
+    RunInstaller = "OK"
+End Function
+
+' SHA256 simple para el instalador (sin depender de functions.asp)
+Function SHA256Hash_Install(strText)
+    On Error Resume Next
+    Dim oSHA, oEncoding, oBytes, oHash, sHex, i
+    Set oSHA      = CreateObject("System.Security.Cryptography.SHA256Managed")
+    Set oEncoding = CreateObject("System.Text.UTF8Encoding")
+    oBytes = oEncoding.GetBytes_4(strText)
+    oHash  = oSHA.ComputeHash_2(oBytes)
+    sHex = ""
+    For i = 0 To UBound(oHash)
+        sHex = sHex & Right("0" & Hex(oHash(i)), 2)
+    Next
+    SHA256Hash_Install = LCase(sHex)
+    If Err.Number <> 0 Then SHA256Hash_Install = strText  ' Fallback
+    Set oSHA = Nothing : Set oEncoding = Nothing
+    On Error GoTo 0
+End Function
+%>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Instalador CMMS</title>
+<link rel="stylesheet" href="/CMMS/assets/css/app.css">
+<style>
+  .install-step-content { display: none; }
+  .install-step-content.active { display: block; }
+  .db-type-card {
+    border: 2px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-align: center;
+  }
+  .db-type-card:hover, .db-type-card.selected {
+    border-color: var(--primary);
+    background: var(--primary-light);
+  }
+  .db-type-icon { font-size: 36px; margin-bottom: 8px; }
+</style>
+</head>
+<body style="background:var(--bg-base)">
+
+<div id="toast-container"></div>
+
+<div class="install-wrapper">
+  <div class="install-card">
+
+    <!-- Header -->
+    <div class="install-header">
+      <div style="font-size:40px;margin-bottom:8px">⚙️</div>
+      <h1>Instalador del Sistema CMMS</h1>
+      <p>Configure la base de datos e instale el sistema</p>
+    </div>
+
+    <!-- Pasos -->
+    <div class="install-steps">
+      <div class="install-step <%= IIf(Step >= "1", IIf(Step > "1", "done", "active"), "") %>">
+        <div class="step-circle"><%= IIf(Step > "1", "✓", "1") %></div>
+        <div class="step-label">Base de Datos</div>
+      </div>
+      <div class="install-step <%= IIf(Step >= "2", IIf(Step > "2", "done", "active"), "") %>">
+        <div class="step-circle"><%= IIf(Step > "2", "✓", "2") %></div>
+        <div class="step-label">Conexión</div>
+      </div>
+      <div class="install-step <%= IIf(Step >= "3", IIf(Step > "3", "done", "active"), "") %>">
+        <div class="step-circle"><%= IIf(Step > "3", "✓", "3") %></div>
+        <div class="step-label">Administrador</div>
+      </div>
+      <div class="install-step <%= IIf(Step = "4", "active", "") %>">
+        <div class="step-circle"><%= IIf(Step = "4", "✓", "4") %></div>
+        <div class="step-label">Completado</div>
+      </div>
+    </div>
+
+    <div class="install-body">
+
+      <!-- Mensajes -->
+      <% If ErrorMsg <> "" Then %>
+      <div class="alert alert-danger" style="margin-bottom:16px">
+        ⚠️ <span><%= Server.HTMLEncode(ErrorMsg) %></span>
+      </div>
+      <% End If %>
+      <% If SuccessMsg <> "" Then %>
+      <div class="alert alert-success" style="margin-bottom:16px">
+        ✓ <span><%= Server.HTMLEncode(SuccessMsg) %></span>
+      </div>
+      <% End If %>
+
+      <!-- ══════════════════════ PASO 1: Tipo de BD ══════════════════════ -->
+      <% If Step = "1" Then %>
+      <h3 style="color:var(--text-primary);margin-bottom:16px">Seleccione el tipo de base de datos</h3>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px">
+        <div class="db-type-card selected" id="card-sqlserver" onclick="selectDB('sqlserver')">
+          <div class="db-type-icon">🖥️</div>
+          <div style="font-weight:600;color:var(--text-primary)">SQL Server</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Microsoft SQL Server<br>2016+</div>
+          <div style="margin-top:8px"><span class="badge badge-success no-dot">Recomendado</span></div>
+        </div>
+        <div class="db-type-card" id="card-mysql" onclick="selectDB('mysql')" style="opacity:0.5;pointer-events:none">
+          <div class="db-type-icon">🐬</div>
+          <div style="font-weight:600;color:var(--text-primary)">MySQL</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">MySQL 5.7+<br>MariaDB</div>
+          <div style="margin-top:8px"><span class="badge badge-muted no-dot">Próximamente</span></div>
+        </div>
+        <div class="db-type-card" id="card-sqlite" onclick="selectDB('sqlite')" style="opacity:0.5;pointer-events:none">
+          <div class="db-type-icon">📁</div>
+          <div style="font-weight:600;color:var(--text-primary)">SQLite</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Archivo local<br>Sin servidor</div>
+          <div style="margin-top:8px"><span class="badge badge-muted no-dot">Próximamente</span></div>
+        </div>
+      </div>
+      <div style="background:var(--primary-light);border:1px solid rgba(99,102,241,0.3);border-radius:10px;padding:16px;margin-bottom:24px">
+        <div style="font-weight:600;color:var(--primary);margin-bottom:8px">📋 Requisitos previos</div>
+        <ul style="color:var(--text-secondary);font-size:13px;padding-left:20px;line-height:2">
+          <li>SQL Server 2016 o superior instalado</li>
+          <li>SQL Server Native Client 11 (SQLNCLI11) instalado en el servidor IIS</li>
+          <li>Usuario SQL con permisos CREATE TABLE, INSERT, UPDATE, DELETE</li>
+          <li>La base de datos puede existir previamente o se usará la especificada</li>
+        </ul>
+      </div>
+      <div style="text-align:right">
+        <a href="?step=2" class="btn btn-primary">
+          Continuar
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+      </div>
+
+      <!-- ══════════════════════ PASO 2: Conexión ══════════════════════ -->
+      <% ElseIf Step = "2" Then %>
+      <h3 style="color:var(--text-primary);margin-bottom:6px">Configuración de Conexión</h3>
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">Ingrese los datos de conexión a SQL Server</p>
+      
+      <form method="POST" action="install.asp" data-validate id="connForm">
+        <input type="hidden" name="action" value="test_save">
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Servidor SQL <span class="required">*</span></label>
+            <input type="text" name="db_server" class="form-control" required
+                   placeholder="Ej: SQLSERVER01, .\SQLEXPRESS, 192.168.1.10"
+                   value="<%= Server.HTMLEncode(Request.Form("db_server")) %>">
+            <div class="form-hint">Nombre del servidor o IP. Para instancia local: .\SQLEXPRESS o (local)</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Base de Datos <span class="required">*</span></label>
+            <input type="text" name="db_name" class="form-control" required
+                   placeholder="Ej: CMMS_DB"
+                   value="<%= Server.HTMLEncode(IIf(Request.Form("db_name") <> "", Request.Form("db_name"), "CMMS_DB")) %>">
+            <div class="form-hint">La BD debe existir previamente</div>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Usuario SQL <span class="required">*</span></label>
+            <input type="text" name="db_user" class="form-control" required
+                   placeholder="Ej: sa, cmms_user"
+                   value="<%= Server.HTMLEncode(Request.Form("db_user")) %>">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Contraseña SQL <span class="required">*</span></label>
+            <input type="password" name="db_pass" class="form-control" required
+                   placeholder="Contraseña del usuario SQL">
+          </div>
+        </div>
+
+        <div style="background:var(--warning-light);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:12px;margin-bottom:20px;font-size:12px;color:var(--warning)">
+          ⚠️ <strong>Importante:</strong> El usuario debe tener permisos para crear tablas e insertar datos en la base de datos especificada.
+        </div>
+
+        <div style="display:flex;justify-content:space-between;gap:12px">
+          <a href="?step=1" class="btn btn-outline">← Atrás</a>
+          <button type="submit" class="btn btn-primary" id="testBtn">
+            🔌 Probar Conexión e Instalar
+          </button>
+        </div>
+      </form>
+
+      <!-- ══════════════════════ PASO 3: Admin ══════════════════════ -->
+      <% ElseIf Step = "3" Then %>
+      <h3 style="color:var(--text-primary);margin-bottom:6px">Crear Administrador del Sistema</h3>
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">Configure las credenciales del usuario administrador</p>
+
+      <div style="background:var(--success-light);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:12px;margin-bottom:20px;font-size:12px;color:var(--success)">
+        ✓ Conexión a SQL Server establecida correctamente. Servidor: <strong><%= Server.HTMLEncode(Session("inst_server")) %></strong> | BD: <strong><%= Server.HTMLEncode(Session("inst_name")) %></strong>
+      </div>
+
+      <form method="POST" action="install.asp" data-validate id="adminForm">
+        <input type="hidden" name="action" value="install">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nombre <span class="required">*</span></label>
+            <input type="text" name="admin_first" class="form-control" required placeholder="Nombre">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Apellido</label>
+            <input type="text" name="admin_last" class="form-control" placeholder="Apellido">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Correo Electrónico <span class="required">*</span></label>
+          <input type="email" name="admin_email" class="form-control" required placeholder="admin@empresa.com" data-type="email">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Usuario Admin <span class="required">*</span></label>
+            <input type="text" name="admin_user" class="form-control" required placeholder="admin" value="admin">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Contraseña <span class="required">*</span></label>
+            <input type="password" name="admin_pass" class="form-control" required placeholder="Mínimo 8 caracteres" value="Admin@123!">
+          </div>
+        </div>
+
+        <div style="background:var(--info-light);border:1px solid rgba(59,130,246,0.3);border-radius:8px;padding:12px;margin-bottom:20px;font-size:12px;color:var(--info)">
+          ℹ️ El instalador creará todas las tablas necesarias y cargará los datos iniciales del sistema.
+        </div>
+
+        <div style="display:flex;justify-content:space-between;gap:12px">
+          <a href="?step=2" class="btn btn-outline">← Atrás</a>
+          <button type="submit" class="btn btn-success" id="installBtn" onclick="this.textContent='Instalando...';this.disabled=true;this.closest('form').submit()">
+            🚀 Instalar Sistema
+          </button>
+        </div>
+      </form>
+
+      <!-- ══════════════════════ PASO 4: Éxito ══════════════════════ -->
+      <% ElseIf Step = "4" Then %>
+      <div style="text-align:center;padding:32px 0">
+        <div style="font-size:64px;margin-bottom:16px">🎉</div>
+        <h2 style="color:var(--success);font-size:28px;font-weight:800;margin-bottom:8px">¡Instalación Completada!</h2>
+        <p style="color:var(--text-muted);margin-bottom:24px">El sistema CMMS ha sido instalado correctamente.</p>
+        
+        <div style="background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:12px;padding:20px;text-align:left;margin-bottom:24px">
+          <h4 style="color:var(--text-primary);margin-bottom:12px">📋 Resumen de la instalación:</h4>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+            <div style="color:var(--text-muted)">Servidor:</div>
+            <div style="color:var(--text-primary);font-weight:500"><%= Server.HTMLEncode(Session("inst_server")) %></div>
+            <div style="color:var(--text-muted)">Base de datos:</div>
+            <div style="color:var(--text-primary);font-weight:500"><%= Server.HTMLEncode(Session("inst_name")) %></div>
+            <div style="color:var(--text-muted)">Usuario admin:</div>
+            <div style="color:var(--text-primary);font-weight:500">admin</div>
+          </div>
+        </div>
+
+        <div style="background:var(--warning-light);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:12px;margin-bottom:24px;font-size:12px;color:var(--warning);text-align:left">
+          ⚠️ <strong>Seguridad:</strong> Por favor cambie la contraseña del administrador inmediatamente después del primer inicio de sesión.
+        </div>
+
+        <a href="/CMMS/login.asp" class="btn btn-primary btn-lg">
+          🔐 Ir al Login
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        
+        <div style="margin-top:16px;font-size:12px;color:var(--text-muted)">
+          Se recomienda eliminar o restringir el acceso al archivo <code>install.asp</code> en producción.
+        </div>
+      </div>
+
+      <% End If %>
+
+    </div><!-- /install-body -->
+  </div><!-- /install-card -->
+</div><!-- /install-wrapper -->
+
+<script src="/CMMS/assets/js/app.js"></script>
+<script>
+function selectDB(type) {
+    document.querySelectorAll('.db-type-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('card-' + type).classList.add('selected');
+}
+document.getElementById('connForm') && document.getElementById('connForm').addEventListener('submit', function(){
+    const btn = document.getElementById('testBtn');
+    if(btn) { btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px;margin-right:8px"></span>Probando...'; btn.disabled = true; }
+});
+</script>
+</body>
+</html>

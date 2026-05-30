@@ -441,48 +441,49 @@ End Function
 
       <!-- ══════════════════════ PASO 1: Tipo de BD ══════════════════════ -->
       <% If Step = "1" Then %>
-      <h3 style="color:var(--text-primary);margin-bottom:16px">Seleccione el tipo de base de datos</h3>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px">
-        <div class="db-type-card selected" id="card-sqlserver" onclick="selectDB('sqlserver')">
-          <div class="db-type-icon">🖥️</div>
-          <div style="font-weight:600;color:var(--text-primary)">SQL Server</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Microsoft SQL Server<br>2016+</div>
-          <div style="margin-top:8px"><span class="badge badge-success no-dot">Recomendado</span></div>
+      <form method="POST" action="install.asp?step=2" id="step1Form">
+        <input type="hidden" name="db_type" id="selected_db_type" value="sqlserver">
+        
+        <h3 style="color:var(--text-primary);margin-bottom:16px">Seleccione el tipo de base de datos</h3>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px">
+          <div class="db-type-card selected" id="card-sqlserver" onclick="selectDB('sqlserver')">
+            <div class="db-type-icon">🖥️</div>
+            <div style="font-weight:600;color:var(--text-primary)">SQL Server</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Microsoft SQL Server<br>2016+</div>
+            <div style="margin-top:8px"><span class="badge badge-success no-dot">Recomendado</span></div>
+          </div>
+          <div class="db-type-card" id="card-mysql" onclick="selectDB('mysql')">
+            <div class="db-type-icon">🐬</div>
+            <div style="font-weight:600;color:var(--text-primary)">MySQL</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px">MySQL 5.7+<br>MariaDB</div>
+            <div style="margin-top:8px"><span class="badge badge-success no-dot">Disponible</span></div>
+          </div>
+          <div class="db-type-card" id="card-sqlite" onclick="selectDB('sqlite')">
+            <div class="db-type-icon">📁</div>
+            <div style="font-weight:600;color:var(--text-primary)">SQLite</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Archivo local<br>Sin servidor</div>
+            <div style="margin-top:8px"><span class="badge badge-success no-dot">Disponible</span></div>
+          </div>
         </div>
-        <div class="db-type-card" id="card-mysql" onclick="selectDB('mysql')">
-          <div class="db-type-icon">🐬</div>
-          <div style="font-weight:600;color:var(--text-primary)">MySQL</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">MySQL 5.7+<br>MariaDB</div>
-          <div style="margin-top:8px"><span class="badge badge-success no-dot">Disponible</span></div>
+        
+        <div style="background:var(--primary-light);border:1px solid rgba(99,102,241,0.3);border-radius:10px;padding:16px;margin-bottom:24px">
+          <div style="font-weight:600;color:var(--primary);margin-bottom:8px">📋 Requisitos previos</div>
+          <ul style="color:var(--text-secondary);font-size:13px;padding-left:20px;line-height:2">
+            <li id="req-sqlserver"><strong>SQL Server:</strong> SQL Server 2016+ o Express instalado</li>
+            <li id="req-sqlserver2">SQL Server Native Client 11 (SQLNCLI11) en IIS</li>
+            <li id="req-mysql" style="display:none"><strong>MySQL:</strong> MySQL 5.7+ o MariaDB 10.3+</li>
+            <li id="req-mysql2" style="display:none">MySQL ODBC 8.0 Unicode Driver instalado en IIS</li>
+            <li id="req-sqlite" style="display:none"><strong>SQLite:</strong> SQLite3 ODBC Driver instalado</li>
+            <li id="req-common">Usuario con permisos CREATE TABLE, INSERT, UPDATE, DELETE</li>
+          </ul>
         </div>
-        <div class="db-type-card" id="card-sqlite" onclick="selectDB('sqlite')">
-          <div class="db-type-icon">📁</div>
-          <div style="font-weight:600;color:var(--text-primary)">SQLite</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Archivo local<br>Sin servidor</div>
-          <div style="margin-top:8px"><span class="badge badge-success no-dot">Disponible</span></div>
+        <div style="text-align:right">
+          <button type="submit" class="btn btn-primary">
+            Continuar
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
         </div>
-      </div>
-      
-      <!-- Campo oculto para tipo de BD seleccionado -->
-      <input type="hidden" name="db_type" id="selected_db_type" value="sqlserver">
-      
-      <div style="background:var(--primary-light);border:1px solid rgba(99,102,241,0.3);border-radius:10px;padding:16px;margin-bottom:24px">
-        <div style="font-weight:600;color:var(--primary);margin-bottom:8px">📋 Requisitos previos</div>
-        <ul style="color:var(--text-secondary);font-size:13px;padding-left:20px;line-height:2">
-          <li id="req-sqlserver"><strong>SQL Server:</strong> SQL Server 2016+ o Express instalado</li>
-          <li id="req-sqlserver2">SQL Server Native Client 11 (SQLNCLI11) en IIS</li>
-          <li id="req-mysql" style="display:none"><strong>MySQL:</strong> MySQL 5.7+ o MariaDB 10.3+</li>
-          <li id="req-mysql2" style="display:none">MySQL ODBC 8.0 Unicode Driver instalado en IIS</li>
-          <li id="req-sqlite" style="display:none"><strong>SQLite:</strong> SQLite3 ODBC Driver instalado</li>
-          <li id="req-common">Usuario con permisos CREATE TABLE, INSERT, UPDATE, DELETE</li>
-        </ul>
-      </div>
-      <div style="text-align:right">
-        <a href="?step=2" class="btn btn-primary" onclick="return validateStep1()">
-          Continuar
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-        </a>
-      </div>
+      </form>
 
       <!-- ══════════════════════ PASO 2: Conexión ══════════════════════ -->
       <% ElseIf Step = "2" Then %>
@@ -792,13 +793,30 @@ function setRequired(fieldName, required) {
 }
 
 function validateStep1() {
-    // Guardar el tipo seleccionado en la sesión para el paso 2
+    // La validación se hace automáticamente al enviar el formulario
+    // El tipo de BD seleccionado se envía por POST al paso 2
     return true;
+}
+
+// Manejar envío del formulario paso 1
+var step1Form = document.getElementById('step1Form');
+if (step1Form) {
+    step1Form.addEventListener('submit', function(e) {
+        // El tipo de BD ya está en el campo oculto selected_db_type
+        // Solo dejamos que el formulario se envíe normalmente
+    });
 }
 
 // Inicializar formulario al cargar
 document.addEventListener('DOMContentLoaded', function() {
-    var dbTypeInput = document.querySelector('input[name="db_type"]');
+    // Paso 1: inicializar requisitos según BD seleccionada
+    var step1DbType = document.getElementById('selected_db_type');
+    if (step1DbType && step1DbType.value) {
+        selectDB(step1DbType.value);
+    }
+    
+    // Paso 2: inicializar campos según BD recibida por POST
+    var dbTypeInput = document.querySelector('form#connForm input[name="db_type"]');
     if (dbTypeInput && dbTypeInput.value) {
         updateStep2Form(dbTypeInput.value);
     }

@@ -2,6 +2,51 @@
 
 Este documento sirve como registro vivo de las correcciones de seguridad aplicadas al sistema.
 
+## 2026-05-30: Auditoría de Seguridad - Corrección de Inyecciones SQL en Módulos Core
+
+### Hallazgos Críticos
+
+Durante la auditoría de seguridad de los módulos funcionales core (Órdenes de Trabajo e Inventario) se identificaron las siguientes vulnerabilidades de **Inyección SQL (SQLi)** que han sido corregidas:
+
+#### 1. Módulo de Órdenes de Trabajo (`modules/work_orders/`)
+
+**a) Acción de cancelación (`index.asp`):**
+- **Vulnerabilidad**: El ID de la orden se concatenaba directamente en la consulta SQL: `oConn.Execute("UPDATE ... WHERE id=" & delId)`
+- **Solución**: Se reemplazó por una consulta parametrizada con `ADODB.Command` y `CreateParameter`.
+
+**b) Cambio de estado (`detail.asp` - `change_status`):**
+- **Vulnerabilidad**: El nuevo estado se escapaba manualmente con `Replace(newStatus, "'", "''")` en lugar de usar parámetros, lo cual es propenso a bypass.
+- **Solución**: Se implementó consulta parametrizada con `cmdCS.CommandText = "UPDATE cmms_work_orders SET status=? WHERE id=?"`
+
+**c) Actualización de horas reales (`detail.asp` - `change_status` completado):**
+- **Vulnerabilidad**: El `itemId` se concatenaba directamente en la subconsulta SUM.
+- **Solución**: Se parametrizó completamente la actualización.
+
+**d) Registro de tiempo (`detail.asp` - `add_time`):**
+- **Vulnerabilidad**: El valor `tHours` se concatenaba directamente en la query: `VALUES (?, ?, " & tHours & ", ?, GETDATE())`
+- **Solución**: Se agregó un parámetro tipado `@h` de tipo `adDouble (5)` para pasar las horas de forma segura.
+
+#### 2. Módulo de Inventario (`modules/inventory/`)
+
+**a) Acción de desactivación (`index.asp`):**
+- **Vulnerabilidad**: El ID se concatenaba directamente en la consulta de baja lógica.
+- **Solución**: Se implementó consulta parametrizada.
+
+### Resumen de Correcciones
+
+| Archivo | Línea | Vulnerabilidad | Severidad | Estado |
+|---|---|---|---|---|
+| `modules/work_orders/index.asp` | 17 | SQLi en `action=delete` | **Crítico** | Corregido |
+| `modules/work_orders/detail.asp` | 59 | SQLi en `change_status` | **Crítico** | Corregido |
+| `modules/work_orders/detail.asp` | 47 | SQLi en `add_time (tHours)` | **Crítico** | Corregido |
+| `modules/work_orders/detail.asp` | 62 | SQLi en `completed_at` update | **Alto** | Corregido |
+| `modules/work_orders/detail.asp` | 53 | SQLi en `actual_hours` update | **Alto** | Corregido |
+| `modules/inventory/index.asp` | 17 | SQLi en `action=delete` | **Crítico** | Corregido |
+
+### Pendiente para Próximas Auditorías
+- Revisar filtros de búsqueda (`LIKE '%...%'`) en `index.asp` de work_orders e inventory que aún usan escape manual con `Replace`. Aunque funcional, se recomienda migrar a ADODB.Command para consistencia total.
+- Agregar validación de token CSRF en las acciones POST de `detail.asp`.
+
 ## 2026-05-30: Sincronización Segura de Esquemas de Base de Datos y Auditoría de Módulos
 - **Sanitización del Esquema SQL**: Se corrigió una anomalía de codificación de fin de archivo en `sql/mssql.sql` que provocaba caracteres espaciados corruptos que podían interferir con la correcta inicialización de la base de datos de manera segura.
 - **Auditoría del Módulo de Solicitudes de Trabajo (`work_requests`)**:

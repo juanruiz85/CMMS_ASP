@@ -14,7 +14,13 @@ Dim oConn : Set oConn = GetConnection()
 If Request.QueryString("action") = "delete" And IsSupervisorOrAdmin() Then
     Dim delId : delId = QSInt("id")
     If delId > 0 Then
-        oConn.Execute("UPDATE cmms_inventory SET status='inactive' WHERE id=" & delId)
+        Dim cmdDel
+        Set cmdDel = Server.CreateObject("ADODB.Command")
+        cmdDel.ActiveConnection = oConn
+        cmdDel.CommandText = "UPDATE cmms_inventory SET status='inactive' WHERE id=?"
+        cmdDel.Parameters.Append cmdDel.CreateParameter("@id", 3, 1, , delId)
+        cmdDel.Execute
+        Set cmdDel = Nothing
         LogActivity CurrentUserId(), "DELETE_INVENTORY", "Artículo inactivo ID: " & delId, "inventory", delId
         SetFlashMessage "success", "Artículo marcado como inactivo."
         RedirectTo "/CMMS/modules/inventory/index.asp"

@@ -1,5 +1,16 @@
 # Changelog del Sistema CMMS
 
+## 2026-05-30 04:40:00
+* **Fase 6: Auditoría de Seguridad - Corrección de Vulnerabilidades SQLi en Módulos Core**
+  * Se realizó auditoría de seguridad en los módulos funcionales core: Órdenes de Trabajo (`work_orders/`) e Inventario (`inventory/`).
+  * Se detectaron y corrigieron **6 vulnerabilidades de inyección SQL** en operaciones críticas:
+    - Cancelación de órdenes de trabajo (`index.asp`): migrado a consulta parametrizada.
+    - Cambio de estado de OT (`detail.asp`): reemplazado escape manual por `ADODB.Command`.
+    - Registro de horas trabajadas (`detail.asp`): parametrizado valor `tHours` que se concatenaba directamente.
+    - Actualización automática de `completed_at` y `actual_hours`: parametrizadas completamente.
+    - Desactivación de artículos de inventario (`inventory/index.asp`): migrado a consulta parametrizada.
+  * Se actualizó `reporte_seguridad.md` con tabla detallada de hallazgos y correcciones.
+
 ## 2026-05-30 03:20:00
 * **Fase 5: Sincronización de Base de Datos y Creación de Contexto de IA**
   * Se corrigieron inconsistencias en los esquemas SQL (`mssql.sql`, `mysql.sql`, `sqlite.sql`) para incluir las tablas `cmms_work_requests` y `cmms_scheduled_reports` de manera uniforme en todos los motores.

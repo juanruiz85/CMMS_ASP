@@ -44,22 +44,44 @@ If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
             Dim cmdT
             Set cmdT = Server.CreateObject("ADODB.Command")
             cmdT.ActiveConnection = oConn
-            cmdT.CommandText = "INSERT INTO cmms_work_order_time_logs (work_order_id, user_id, hours, description, created_at) VALUES (?, ?, " & tHours & ", ?, GETDATE())"
+            cmdT.CommandText = "INSERT INTO cmms_work_order_time_logs (work_order_id, user_id, hours, description, created_at) VALUES (?, ?, ?, ?, GETDATE())"
             cmdT.Parameters.Append cmdT.CreateParameter("@wo", 3, 1, , itemId)
             cmdT.Parameters.Append cmdT.CreateParameter("@uid", 3, 1, , CurrentUserId())
+            cmdT.Parameters.Append cmdT.CreateParameter("@h", 5, 1, , tHours)
             cmdT.Parameters.Append cmdT.CreateParameter("@d", 200, 1, 500, tDesc)
             cmdT.Execute
             ' Actualizar horas reales de la OT
-            oConn.Execute("UPDATE cmms_work_orders SET actual_hours = (SELECT SUM(hours) FROM cmms_work_order_time_logs WHERE work_order_id = " & itemId & ") WHERE id = " & itemId)
+            Dim cmdAH
+                Set cmdAH = Server.CreateObject("ADODB.Command")
+                cmdAH.ActiveConnection = oConn
+                cmdAH.CommandText = "UPDATE cmms_work_orders SET actual_hours = (SELECT SUM(hours) FROM cmms_work_order_time_logs WHERE work_order_id = ?) WHERE id = ?"
+                cmdAH.Parameters.Append cmdAH.CreateParameter("@woid", 3, 1, , itemId)
+                cmdAH.Parameters.Append cmdAH.CreateParameter("@id", 3, 1, , itemId)
+                cmdAH.Execute
+                Set cmdAH = Nothing
             SetFlashMessage "success", "Tiempo registrado."
         End If
     ElseIf tabAction = "change_status" And IsSupervisorOrAdmin() Then
         Dim newStatus : newStatus = Trim(Request.Form("status"))
         If newStatus <> "" Then
-            oConn.Execute("UPDATE cmms_work_orders SET status='" & Replace(newStatus, "'", "''") & "' WHERE id=" & itemId)
+            Dim cmdCS
+            Set cmdCS = Server.CreateObject("ADODB.Command")
+            cmdCS.ActiveConnection = oConn
+            cmdCS.CommandText = "UPDATE cmms_work_orders SET status=? WHERE id=?"
+            cmdCS.Parameters.Append cmdCS.CreateParameter("@st", 200, 1, 20, newStatus)
+            cmdCS.Parameters.Append cmdCS.CreateParameter("@id", 3, 1, , itemId)
+            cmdCS.Execute
+            Set cmdCS = Nothing
             SetFlashMessage "success", "Estado actualizado."
             If newStatus = "completed" Then
-                oConn.Execute("UPDATE cmms_work_orders SET completed_at=GETDATE(), closed_by_id=" & CurrentUserId() & " WHERE id=" & itemId & " AND completed_at IS NULL")
+                Dim cmdCS2
+                Set cmdCS2 = Server.CreateObject("ADODB.Command")
+                cmdCS2.ActiveConnection = oConn
+                cmdCS2.CommandText = "UPDATE cmms_work_orders SET completed_at=GETDATE(), closed_by_id=? WHERE id=? AND completed_at IS NULL"
+                cmdCS2.Parameters.Append cmdCS2.CreateParameter("@uid", 3, 1, , CurrentUserId())
+                cmdCS2.Parameters.Append cmdCS2.CreateParameter("@id2", 3, 1, , itemId)
+                cmdCS2.Execute
+                Set cmdCS2 = Nothing
             End If
         End If
     End If

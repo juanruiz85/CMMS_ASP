@@ -1,3 +1,4 @@
+```
 # Compiled and build artifacts
 *.pyc
 __pycache__/
@@ -22,22 +23,40 @@ venv/
 *.log
 *.tmp
 *.swp
+*.swo
 
 # Editors
 .vscode/
 .idea/
 
-# OS
+# System files
 .DS_Store
 Thumbs.db
 
-# Build systems
-build/
-dist/
-target/
-.gradle/
-.mypy_cache/
-.pytest_cache/
+# Coverage
 coverage/
 htmlcov/
 .coverage
+
+# Build directories
+dist/
+build/
+target/
+.gradle/
+
+# Python specific
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+*.so
+.Python
+*.egg-info/
+.eggs/
+
+# ASP specific build artifacts
+*.asp~
+*.aspx~
+
+```

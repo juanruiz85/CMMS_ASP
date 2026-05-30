@@ -5,6 +5,12 @@
 ' Variables esperadas: PageTitle, PageModule
 ' =============================================================================
 
+' Verificar que la sesión sea válida antes de continuar
+If Session("user_id") = "" Or Session("user_id") = 0 Then
+    Response.Redirect "/CMMS/login.asp?expired=1"
+    Response.End
+End If
+
 Dim NavUserName : NavUserName = CurrentUserFullName()
 Dim NavUserRole : NavUserRole = CurrentUserRole()
 Dim NavUserId   : NavUserId   = CurrentUserId()

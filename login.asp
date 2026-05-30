@@ -2,17 +2,19 @@
 ' =============================================================================
 ' CMMS - Login Page (login.asp)
 ' =============================================================================
-' Si ya está autenticado, ir al dashboard
-If Session("user_id") <> "" And Session("user_id") <> 0 Then
-    Response.Redirect "/CMMS/index.asp"
-    Response.End
-End If
+' Incluir primero las dependencias necesarias
 %>
 <!--#include virtual="/CMMS/config/database.asp"-->
 <!--#include virtual="/CMMS/core/functions.asp"-->
 <!--#include virtual="/CMMS/core/i18n.asp"-->
 <!--#include virtual="/CMMS/core/auth.asp"-->
 <%
+' Si ya está autenticado, ir al dashboard
+If Session("user_id") <> "" And Session("user_id") <> 0 Then
+    Response.Redirect "/CMMS/index.asp"
+    Response.End
+End If
+
 Dim LoginError : LoginError = ""
 Dim LoginMsg   : LoginMsg   = ""
 

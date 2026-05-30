@@ -11,11 +11,12 @@
 '   <!--#include virtual="/CMMS/core/auth.asp"-->
 
 ' Valores por defecto
+Dim PageTitle, PageModule
 If Not IsDefined("PageTitle") Then
-    Dim PageTitle : PageTitle = T("app_name")
+    PageTitle = T("app_name")
 End If
 If Not IsDefined("PageModule") Then
-    Dim PageModule : PageModule = ""
+    PageModule = ""
 End If
 
 ' Contar notificaciones no leídas

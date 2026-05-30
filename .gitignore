@@ -4,10 +4,11 @@
 __pycache__/
 *.o
 *.obj
+*.class
 *.exe
 *.dll
 *.so
-*.class
+*.a
 *.out
 
 # Dependencies
@@ -28,19 +29,24 @@ venv/
 .vscode/
 .idea/
 
-# OS specific
+# System files
 .DS_Store
 Thumbs.db
 
-# Build and distribution
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Build directories
 dist/
 build/
 target/
-coverage/
-htmlcov/
+.gradle/
+
+# Python specific
 .mypy_cache/
 .pytest_cache/
-.gradle/
 
 # Compressed files
 *.zip
@@ -66,6 +72,3 @@ htmlcov/
 *.tar.xz
 *.tar.zst
 ```
-config/database.asp
-cmms.db
-.gitignore

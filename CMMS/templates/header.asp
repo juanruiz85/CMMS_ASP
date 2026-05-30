@@ -12,8 +12,8 @@
 
 ' Valores por defecto (solo si no fueron establecidas por la página que llama)
 On Error Resume Next
-If IsEmpty(PageTitle) Then PageTitle = T("app_name")
-If IsEmpty(PageModule) Then PageModule = ""
+If Not IsDefined("PageTitle") Then PageTitle = T("app_name")
+If Not IsDefined("PageModule") Then PageModule = ""
 On Error GoTo 0
 
 ' Contar notificaciones no leídas

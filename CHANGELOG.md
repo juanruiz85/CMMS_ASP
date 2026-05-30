@@ -1,5 +1,12 @@
 # Changelog del Sistema CMMS
 
+## 2026-05-30 07:15:00
+* **Fix: Correccion de error de sintaxis en install.asp**
+  * Se corrigio el error `Unterminated string constant` en la linea 255 de `install.asp`.
+  * **Problema**: Las lineas `WriteLine "<%"` y `WriteLine "%>"` causaban errores de compilacion en VBScript porque el parser interpretaba las comillas como fin de string.
+  * **Solucion**: Se cambiaron a `WriteLine "<" & "%"` y `WriteLine "%" & ">"` para escapar correctamente los tags ASP dentro de strings literales.
+  * **Resultado**: El instalador ahora puede generar correctamente el archivo `config/database.asp` sin errores de sintaxis.
+
 ## 2026-05-30 06:30:00
 * **Fase 10: Migración Completa de Filtros SELECT LIKE a ADODB.Command en Todos los Módulos Restantes**
   * Se migraron todos los filtros de búsqueda con `LIKE` y `Replace()` manual en módulos restantes a consultas completamente parametrizadas con `ADODB.Command`.

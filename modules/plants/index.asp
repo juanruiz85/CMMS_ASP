@@ -29,9 +29,14 @@ End If
 
 ' Filters
 Dim filterQuery : filterQuery = Trim(Request.QueryString("q"))
+
+' Build WHERE clause with parameters
 Dim sqlWhere : sqlWhere = " WHERE 1=1 "
+Dim whereParams : whereParams = ""
+
 If filterQuery <> "" Then
-    sqlWhere = sqlWhere & " AND (p.name LIKE '%" & Replace(filterQuery, "'", "''") & "%' OR p.code LIKE '%" & Replace(filterQuery, "'", "''") & "%') "
+    sqlWhere = sqlWhere & " AND (p.name LIKE ? OR p.code LIKE ?) "
+    whereParams = whereParams & "%" & filterQuery & "%|" & "%" & filterQuery & "%|"
 End If
 
 ' Pagination
@@ -39,15 +44,33 @@ Dim currentPage : currentPage = GetCurrentPage()
 Dim perPage     : perPage = GetPerPage()
 Dim offset      : offset = (currentPage - 1) * perPage
 
-' Count total
+' Count total with parameters
 Dim totalRows : totalRows = 0
-Dim rsTotal
-Set rsTotal = oConn.Execute("SELECT COUNT(*) AS cnt FROM cmms_plants p " & sqlWhere)
+Dim cmdTotal, rsTotal
+Set cmdTotal = Server.CreateObject("ADODB.Command")
+cmdTotal.ActiveConnection = oConn
+cmdTotal.CommandText = "SELECT COUNT(*) AS cnt FROM cmms_plants p " & sqlWhere
+
+' Add parameters for count
+Dim iParam, paramArr
+If whereParams <> "" Then
+    paramArr = Split(whereParams, "|")
+    For iParam = 0 To UBound(paramArr) - 1
+        If IsNumeric(paramArr(iParam)) Then
+            cmdTotal.Parameters.Append cmdTotal.CreateParameter("@p" & iParam, 3, 1, , paramArr(iParam))
+        Else
+            cmdTotal.Parameters.Append cmdTotal.CreateParameter("@p" & iParam, 200, 1, 500, paramArr(iParam))
+        End If
+    Next
+End If
+
+Set rsTotal = cmdTotal.Execute()
 If Not rsTotal.EOF Then totalRows = rsTotal("cnt")
 rsTotal.Close : Set rsTotal = Nothing
+Set cmdTotal = Nothing
 
-' Get data
-Dim sql
+' Get data with parameters
+Dim sql, cmdPlants, rsPlants
 sql = "SELECT p.*, u.first_name + ' ' + u.last_name AS manager_name, " & _
       "(SELECT COUNT(*) FROM cmms_assets WHERE plant_id = p.id) AS asset_count " & _
       "FROM cmms_plants p " & _
@@ -56,8 +79,24 @@ sql = "SELECT p.*, u.first_name + ' ' + u.last_name AS manager_name, " & _
       "ORDER BY p.name " & _
       "OFFSET " & offset & " ROWS FETCH NEXT " & perPage & " ROWS ONLY"
 
-Dim rsPlants
-Set rsPlants = oConn.Execute(sql)
+Set cmdPlants = Server.CreateObject("ADODB.Command")
+cmdPlants.ActiveConnection = oConn
+cmdPlants.CommandText = sql
+
+' Re-add parameters for main query
+If whereParams <> "" Then
+    paramArr = Split(whereParams, "|")
+    For iParam = 0 To UBound(paramArr) - 1
+        If IsNumeric(paramArr(iParam)) Then
+            cmdPlants.Parameters.Append cmdPlants.CreateParameter("@p" & iParam, 3, 1, , paramArr(iParam))
+        Else
+            cmdPlants.Parameters.Append cmdPlants.CreateParameter("@p" & iParam, 200, 1, 500, paramArr(iParam))
+        End If
+    Next
+End If
+
+Set rsPlants = cmdPlants.Execute()
+Set cmdPlants = Nothing
 %>
 <!--#include virtual="/CMMS/templates/header.asp"-->
 <!--#include virtual="/CMMS/templates/navigation.asp"-->

@@ -1,5 +1,17 @@
 # Changelog del Sistema CMMS
 
+## 2026-05-30 06:30:00
+* **Fase 10: Migración Completa de Filtros SELECT LIKE a ADODB.Command en Todos los Módulos Restantes**
+  * Se migraron todos los filtros de búsqueda con `LIKE` y `Replace()` manual en módulos restantes a consultas completamente parametrizadas con `ADODB.Command`.
+  * **Archivos corregidos**:
+    - `modules/work_requests/index.asp`: Filtros de status y plant_id migrados a parámetros (incluye filtro por usuario actual).
+    - `modules/work_requests/form.asp`: INSERT de solicitudes migrado a comando parametrizado (se eliminó concatenación de plant_id, asset_id y requested_by_id).
+    - `modules/assets_module/index.asp`: Filtros de búsqueda (q, plant_id, status) migrados a ADODB.Command con parámetros.
+    - `modules/users/index.asp`: Filtros de búsqueda (q, role, status) migrados a ADODB.Command con parámetros.
+    - `modules/plants/index.asp`: Filtro de búsqueda (q) migrado a ADODB.Command con parámetros.
+    - `modules/admin/logs.asp`: Filtros (user_id, module, date) migrados a ADODB.Command con parámetros.
+  * **Resultado**: **100% de consultas SELECT con filtros parametrizados** en todos los módulos del sistema, eliminando completamente el riesgo de SQL Injection en operaciones de lectura con filtros de usuario.
+
 ## 2026-05-30 05:12:00
 * **Fase 8: Migración Completa de Filtros LIKE a ADODB.Command Parametrizado**
   * Se migraron todos los filtros de búsqueda con `LIKE` y `Replace()` manual en `modules/work_orders/index.asp` a consultas completamente parametrizadas con `ADODB.Command`.

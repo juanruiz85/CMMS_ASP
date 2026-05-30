@@ -20,14 +20,16 @@ If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
     Dim rDesc  : rDesc  = Trim(Request.Form("description"))
     Dim rPlant : rPlant = QSIntForm("plant_id")
     Dim rAsset : rAsset = QSIntForm("asset_id")
-    If rAsset = 0 Then rAsset = "NULL"
 
     Dim cmd
     Set cmd = Server.CreateObject("ADODB.Command")
     cmd.ActiveConnection = oConn
-    cmd.CommandText = "INSERT INTO cmms_work_requests (title, description, plant_id, asset_id, requested_by_id, status, created_at) VALUES (?, ?, " & rPlant & ", " & rAsset & ", " & CurrentUserId() & ", 'pending', GETDATE())"
+    cmd.CommandText = "INSERT INTO cmms_work_requests (title, description, plant_id, asset_id, requested_by_id, status, created_at) VALUES (?, ?, ?, ?, ?, 'pending', GETDATE())"
     cmd.Parameters.Append cmd.CreateParameter("@title", 200, 1, 255, rTitle)
     cmd.Parameters.Append cmd.CreateParameter("@desc", 200, 1, 4000, rDesc)
+    cmd.Parameters.Append cmd.CreateParameter("@plant", 3, 1, , rPlant)
+    cmd.Parameters.Append cmd.CreateParameter("@asset", 3, 1, , IIf(rAsset = 0, Null, rAsset))
+    cmd.Parameters.Append cmd.CreateParameter("@user", 3, 1, , CurrentUserId())
     cmd.Execute
     
     CheckError "Al insertar la solicitud de trabajo"

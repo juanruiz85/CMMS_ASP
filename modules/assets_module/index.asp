@@ -32,15 +32,21 @@ Dim filterQuery  : filterQuery  = Trim(Request.QueryString("q"))
 Dim filterPlant  : filterPlant  = QSInt("plant_id")
 Dim filterStatus : filterStatus = Trim(Request.QueryString("status"))
 
+' Build WHERE clause with parameters
 Dim sqlWhere : sqlWhere = " WHERE 1=1 "
+Dim whereParams : whereParams = ""
+
 If filterQuery <> "" Then
-    sqlWhere = sqlWhere & " AND (a.name LIKE '%" & Replace(filterQuery, "'", "''") & "%' OR a.code LIKE '%" & Replace(filterQuery, "'", "''") & "%' OR a.category LIKE '%" & Replace(filterQuery, "'", "''") & "%') "
+    sqlWhere = sqlWhere & " AND (a.name LIKE ? OR a.code LIKE ? OR a.category LIKE ?) "
+    whereParams = whereParams & "%" & filterQuery & "%|" & "%" & filterQuery & "%|" & "%" & filterQuery & "%|"
 End If
 If filterPlant > 0 Then
-    sqlWhere = sqlWhere & " AND a.plant_id = " & filterPlant
+    sqlWhere = sqlWhere & " AND a.plant_id = ? "
+    whereParams = whereParams & filterPlant & "|"
 End If
 If filterStatus <> "" Then
-    sqlWhere = sqlWhere & " AND a.status = '" & Replace(filterStatus, "'", "''") & "' "
+    sqlWhere = sqlWhere & " AND a.status = ? "
+    whereParams = whereParams & filterStatus & "|"
 End If
 
 ' Pagination
@@ -48,15 +54,33 @@ Dim currentPage : currentPage = GetCurrentPage()
 Dim perPage     : perPage = GetPerPage()
 Dim offset      : offset = (currentPage - 1) * perPage
 
-' Count total
+' Count total with parameters
 Dim totalRows : totalRows = 0
-Dim rsTotal
-Set rsTotal = oConn.Execute("SELECT COUNT(*) AS cnt FROM cmms_assets a " & sqlWhere)
+Dim cmdTotal, rsTotal
+Set cmdTotal = Server.CreateObject("ADODB.Command")
+cmdTotal.ActiveConnection = oConn
+cmdTotal.CommandText = "SELECT COUNT(*) AS cnt FROM cmms_assets a " & sqlWhere
+
+' Add parameters for count
+Dim iParam, paramArr
+If whereParams <> "" Then
+    paramArr = Split(whereParams, "|")
+    For iParam = 0 To UBound(paramArr) - 1
+        If IsNumeric(paramArr(iParam)) Then
+            cmdTotal.Parameters.Append cmdTotal.CreateParameter("@p" & iParam, 3, 1, , paramArr(iParam))
+        Else
+            cmdTotal.Parameters.Append cmdTotal.CreateParameter("@p" & iParam, 200, 1, 500, paramArr(iParam))
+        End If
+    Next
+End If
+
+Set rsTotal = cmdTotal.Execute()
 If Not rsTotal.EOF Then totalRows = rsTotal("cnt")
 rsTotal.Close : Set rsTotal = Nothing
+Set cmdTotal = Nothing
 
-' Get data
-Dim sql
+' Get data with parameters
+Dim sql, cmdAssets, rsAssets
 sql = "SELECT a.*, p.name AS plant_name " & _
       "FROM cmms_assets a " & _
       "LEFT JOIN cmms_plants p ON p.id = a.plant_id " & _
@@ -64,8 +88,24 @@ sql = "SELECT a.*, p.name AS plant_name " & _
       "ORDER BY a.name " & _
       "OFFSET " & offset & " ROWS FETCH NEXT " & perPage & " ROWS ONLY"
 
-Dim rsAssets
-Set rsAssets = oConn.Execute(sql)
+Set cmdAssets = Server.CreateObject("ADODB.Command")
+cmdAssets.ActiveConnection = oConn
+cmdAssets.CommandText = sql
+
+' Re-add parameters for main query
+If whereParams <> "" Then
+    paramArr = Split(whereParams, "|")
+    For iParam = 0 To UBound(paramArr) - 1
+        If IsNumeric(paramArr(iParam)) Then
+            cmdAssets.Parameters.Append cmdAssets.CreateParameter("@p" & iParam, 3, 1, , paramArr(iParam))
+        Else
+            cmdAssets.Parameters.Append cmdAssets.CreateParameter("@p" & iParam, 200, 1, 500, paramArr(iParam))
+        End If
+    Next
+End If
+
+Set rsAssets = cmdAssets.Execute()
+Set cmdAssets = Nothing
 
 ' Get plants for filter
 Dim rsPlantsFilter

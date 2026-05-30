@@ -14,17 +14,28 @@ Dim oConn : Set oConn = GetConnection()
 Dim filterStatus : filterStatus = Trim(Request.QueryString("status"))
 Dim filterPlant  : filterPlant  = QSInt("plant_id")
 
+' Build WHERE clause with parameters
 Dim sqlWhere : sqlWhere = " WHERE 1=1 "
+Dim paramCount : paramCount = 0
+Dim whereParams : whereParams = ""
+
 If Not IsSupervisorOrAdmin() Then
     ' Los usuarios normales solo ven sus propias solicitudes
-    sqlWhere = sqlWhere & " AND r.requested_by_id = " & CurrentUserId()
+    sqlWhere = sqlWhere & " AND r.requested_by_id = ? "
+    paramCount = paramCount + 1
+    whereParams = whereParams & CurrentUserId() & "|"
 End If
 
 If filterStatus <> "" Then
-    sqlWhere = sqlWhere & " AND r.status = '" & Replace(filterStatus, "'", "''") & "' "
+    sqlWhere = sqlWhere & " AND r.status = ? "
+    paramCount = paramCount + 1
+    whereParams = whereParams & filterStatus & "|"
 End If
+
 If filterPlant > 0 Then
-    sqlWhere = sqlWhere & " AND r.plant_id = " & filterPlant
+    sqlWhere = sqlWhere & " AND r.plant_id = ? "
+    paramCount = paramCount + 1
+    whereParams = whereParams & filterPlant & "|"
 End If
 
 ' Paginacion
@@ -32,15 +43,33 @@ Dim currentPage : currentPage = GetCurrentPage()
 Dim perPage     : perPage = GetPerPage()
 Dim offset      : offset = (currentPage - 1) * perPage
 
-' Count
+' Count with parameters
 Dim totalRows : totalRows = 0
-Dim rsTotal
-Set rsTotal = oConn.Execute("SELECT COUNT(*) AS cnt FROM cmms_work_requests r " & sqlWhere)
+Dim cmdTotal, rsTotal
+Set cmdTotal = Server.CreateObject("ADODB.Command")
+cmdTotal.ActiveConnection = oConn
+cmdTotal.CommandText = "SELECT COUNT(*) AS cnt FROM cmms_work_requests r " & sqlWhere
+
+' Add parameters for count
+Dim iParam, paramArr
+If whereParams <> "" Then
+    paramArr = Split(whereParams, "|")
+    For iParam = 0 To UBound(paramArr) - 1
+        If iParam < 1 Or IsNumeric(paramArr(iParam)) Then
+            cmdTotal.Parameters.Append cmdTotal.CreateParameter("@p" & iParam, 3, 1, , paramArr(iParam))
+        Else
+            cmdTotal.Parameters.Append cmdTotal.CreateParameter("@p" & iParam, 200, 1, 255, paramArr(iParam))
+        End If
+    Next
+End If
+
+Set rsTotal = cmdTotal.Execute()
 If Not rsTotal.EOF Then totalRows = rsTotal("cnt")
 rsTotal.Close : Set rsTotal = Nothing
+Set cmdTotal = Nothing
 
-' Get data
-Dim sql
+' Get data with parameters
+Dim sql, cmdReq, rsReq
 sql = "SELECT r.*, p.name AS plant_name, a.name AS asset_name, u.first_name + ' ' + u.last_name AS requested_by, wo.code AS wo_code " & _
       "FROM cmms_work_requests r " & _
       "LEFT JOIN cmms_plants p ON p.id = r.plant_id " & _
@@ -51,8 +80,24 @@ sql = "SELECT r.*, p.name AS plant_name, a.name AS asset_name, u.first_name + ' 
       "ORDER BY r.created_at DESC " & _
       "OFFSET " & offset & " ROWS FETCH NEXT " & perPage & " ROWS ONLY"
 
-Dim rsReq
-Set rsReq = oConn.Execute(sql)
+Set cmdReq = Server.CreateObject("ADODB.Command")
+cmdReq.ActiveConnection = oConn
+cmdReq.CommandText = sql
+
+' Re-add parameters for main query
+If whereParams <> "" Then
+    paramArr = Split(whereParams, "|")
+    For iParam = 0 To UBound(paramArr) - 1
+        If iParam < 1 Or IsNumeric(paramArr(iParam)) Then
+            cmdReq.Parameters.Append cmdReq.CreateParameter("@p" & iParam, 3, 1, , paramArr(iParam))
+        Else
+            cmdReq.Parameters.Append cmdReq.CreateParameter("@p" & iParam, 200, 1, 255, paramArr(iParam))
+        End If
+    Next
+End If
+
+Set rsReq = cmdReq.Execute()
+Set cmdReq = Nothing
 
 Dim rsPlants
 Set rsPlants = oConn.Execute("SELECT id, name FROM cmms_plants WHERE status='active' ORDER BY name")

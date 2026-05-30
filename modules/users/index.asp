@@ -36,15 +36,21 @@ Dim filterQuery  : filterQuery  = Trim(Request.QueryString("q"))
 Dim filterRole   : filterRole   = Trim(Request.QueryString("role"))
 Dim filterStatus : filterStatus = Trim(Request.QueryString("status"))
 
+' Build WHERE clause with parameters
 Dim sqlWhere : sqlWhere = " WHERE 1=1 "
+Dim whereParams : whereParams = ""
+
 If filterQuery <> "" Then
-    sqlWhere = sqlWhere & " AND (u.username LIKE '%" & Replace(filterQuery, "'", "''") & "%' OR u.email LIKE '%" & Replace(filterQuery, "'", "''") & "%' OR u.first_name + ' ' + u.last_name LIKE '%" & Replace(filterQuery, "'", "''") & "%') "
+    sqlWhere = sqlWhere & " AND (u.username LIKE ? OR u.email LIKE ? OR u.first_name + ' ' + u.last_name LIKE ?) "
+    whereParams = whereParams & "%" & filterQuery & "%|" & "%" & filterQuery & "%|" & "%" & filterQuery & "%|"
 End If
 If filterRole <> "" Then
-    sqlWhere = sqlWhere & " AND u.role = '" & Replace(filterRole, "'", "''") & "' "
+    sqlWhere = sqlWhere & " AND u.role = ? "
+    whereParams = whereParams & filterRole & "|"
 End If
 If filterStatus <> "" Then
-    sqlWhere = sqlWhere & " AND u.status = '" & Replace(filterStatus, "'", "''") & "' "
+    sqlWhere = sqlWhere & " AND u.status = ? "
+    whereParams = whereParams & filterStatus & "|"
 End If
 
 ' Pagination
@@ -52,22 +58,56 @@ Dim currentPage : currentPage = GetCurrentPage()
 Dim perPage     : perPage = 20 ' Hardcoded to 20 for users
 Dim offset      : offset = (currentPage - 1) * perPage
 
-' Count total
+' Count total with parameters
 Dim totalRows : totalRows = 0
-Dim rsTotal
-Set rsTotal = oConn.Execute("SELECT COUNT(*) AS cnt FROM cmms_users u " & sqlWhere)
+Dim cmdTotal, rsTotal
+Set cmdTotal = Server.CreateObject("ADODB.Command")
+cmdTotal.ActiveConnection = oConn
+cmdTotal.CommandText = "SELECT COUNT(*) AS cnt FROM cmms_users u " & sqlWhere
+
+' Add parameters for count
+Dim iParam, paramArr
+If whereParams <> "" Then
+    paramArr = Split(whereParams, "|")
+    For iParam = 0 To UBound(paramArr) - 1
+        If IsNumeric(paramArr(iParam)) Then
+            cmdTotal.Parameters.Append cmdTotal.CreateParameter("@p" & iParam, 3, 1, , paramArr(iParam))
+        Else
+            cmdTotal.Parameters.Append cmdTotal.CreateParameter("@p" & iParam, 200, 1, 255, paramArr(iParam))
+        End If
+    Next
+End If
+
+Set rsTotal = cmdTotal.Execute()
 If Not rsTotal.EOF Then totalRows = rsTotal("cnt")
 rsTotal.Close : Set rsTotal = Nothing
+Set cmdTotal = Nothing
 
-' Get data
-Dim sql
+' Get data with parameters
+Dim sql, cmdUsers, rsUsers
 sql = "SELECT u.* FROM cmms_users u " & _
       sqlWhere & _
       "ORDER BY u.first_name, u.last_name " & _
       "OFFSET " & offset & " ROWS FETCH NEXT " & perPage & " ROWS ONLY"
 
-Dim rsUsers
-Set rsUsers = oConn.Execute(sql)
+Set cmdUsers = Server.CreateObject("ADODB.Command")
+cmdUsers.ActiveConnection = oConn
+cmdUsers.CommandText = sql
+
+' Re-add parameters for main query
+If whereParams <> "" Then
+    paramArr = Split(whereParams, "|")
+    For iParam = 0 To UBound(paramArr) - 1
+        If IsNumeric(paramArr(iParam)) Then
+            cmdUsers.Parameters.Append cmdUsers.CreateParameter("@p" & iParam, 3, 1, , paramArr(iParam))
+        Else
+            cmdUsers.Parameters.Append cmdUsers.CreateParameter("@p" & iParam, 200, 1, 255, paramArr(iParam))
+        End If
+    Next
+End If
+
+Set rsUsers = cmdUsers.Execute()
+Set cmdUsers = Nothing
 
 %>
 <!--#include virtual="/CMMS/templates/header.asp"-->

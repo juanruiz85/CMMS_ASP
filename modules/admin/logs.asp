@@ -19,15 +19,21 @@ Dim filterUser : filterUser = QSInt("user_id")
 Dim filterMod  : filterMod  = Trim(Request.QueryString("module"))
 Dim filterDate : filterDate = Trim(Request.QueryString("date"))
 
+' Build WHERE clause with parameters
 Dim sqlWhere : sqlWhere = " WHERE 1=1 "
+Dim whereParams : whereParams = ""
+
 If filterUser > 0 Then
-    sqlWhere = sqlWhere & " AND l.user_id = " & filterUser
+    sqlWhere = sqlWhere & " AND l.user_id = ? "
+    whereParams = whereParams & filterUser & "|"
 End If
 If filterMod <> "" Then
-    sqlWhere = sqlWhere & " AND l.entity_type = '" & Replace(filterMod, "'", "''") & "' "
+    sqlWhere = sqlWhere & " AND l.entity_type = ? "
+    whereParams = whereParams & filterMod & "|"
 End If
 If filterDate <> "" Then
-    sqlWhere = sqlWhere & " AND CAST(l.created_at AS DATE) = '" & Replace(filterDate, "'", "''") & "' "
+    sqlWhere = sqlWhere & " AND CAST(l.created_at AS DATE) = ? "
+    whereParams = whereParams & filterDate & "|"
 End If
 
 ' Pagination
@@ -35,15 +41,33 @@ Dim currentPage : currentPage = GetCurrentPage()
 Dim perPage     : perPage = 50
 Dim offset      : offset = (currentPage - 1) * perPage
 
-' Count
+' Count with parameters
 Dim totalRows : totalRows = 0
-Dim rsTotal
-Set rsTotal = oConn.Execute("SELECT COUNT(*) AS cnt FROM cmms_activity_logs l " & sqlWhere)
+Dim cmdTotal, rsTotal
+Set cmdTotal = Server.CreateObject("ADODB.Command")
+cmdTotal.ActiveConnection = oConn
+cmdTotal.CommandText = "SELECT COUNT(*) AS cnt FROM cmms_activity_logs l " & sqlWhere
+
+' Add parameters for count
+Dim iParam, paramArr
+If whereParams <> "" Then
+    paramArr = Split(whereParams, "|")
+    For iParam = 0 To UBound(paramArr) - 1
+        If IsNumeric(paramArr(iParam)) Then
+            cmdTotal.Parameters.Append cmdTotal.CreateParameter("@p" & iParam, 3, 1, , paramArr(iParam))
+        Else
+            cmdTotal.Parameters.Append cmdTotal.CreateParameter("@p" & iParam, 200, 1, 255, paramArr(iParam))
+        End If
+    Next
+End If
+
+Set rsTotal = cmdTotal.Execute()
 If Not rsTotal.EOF Then totalRows = rsTotal("cnt")
 rsTotal.Close : Set rsTotal = Nothing
+Set cmdTotal = Nothing
 
-' Data
-Dim sql
+' Data with parameters
+Dim sql, cmdLogs, rsLogs
 sql = "SELECT l.*, u.first_name + ' ' + u.last_name AS user_name, u.username " & _
       "FROM cmms_activity_logs l " & _
       "LEFT JOIN cmms_users u ON u.id = l.user_id " & _
@@ -51,8 +75,24 @@ sql = "SELECT l.*, u.first_name + ' ' + u.last_name AS user_name, u.username " &
       "ORDER BY l.created_at DESC " & _
       "OFFSET " & offset & " ROWS FETCH NEXT " & perPage & " ROWS ONLY"
 
-Dim rsLogs
-Set rsLogs = oConn.Execute(sql)
+Set cmdLogs = Server.CreateObject("ADODB.Command")
+cmdLogs.ActiveConnection = oConn
+cmdLogs.CommandText = sql
+
+' Re-add parameters for main query
+If whereParams <> "" Then
+    paramArr = Split(whereParams, "|")
+    For iParam = 0 To UBound(paramArr) - 1
+        If IsNumeric(paramArr(iParam)) Then
+            cmdLogs.Parameters.Append cmdLogs.CreateParameter("@p" & iParam, 3, 1, , paramArr(iParam))
+        Else
+            cmdLogs.Parameters.Append cmdLogs.CreateParameter("@p" & iParam, 200, 1, 255, paramArr(iParam))
+        End If
+    Next
+End If
+
+Set rsLogs = cmdLogs.Execute()
+Set cmdLogs = Nothing
 
 ' Get Users for filter
 Dim rsUsers

@@ -103,6 +103,29 @@ C:\CMMS\
   - `reporte_seguridad.md` (ACTUALIZADO): Tabla detallada de hallazgos y correcciones.
   - `CHANGELOG.md` (ACTUALIZADO): Nueva entrada Fase 6.
 
+### Fase 10 (2026-05-30 06:30): Migración Completa de Filtros SELECT LIKE a ADODB.Command en Módulos Restantes
+- **work_requests/index.asp**: Filtros de status y plant_id migrados a parámetros con ADODB.Command (incluye filtro automático por usuario actual).
+- **work_requests/form.asp**: INSERT de solicitudes completamente parametrizado (eliminando concatenación de plant_id, asset_id y requested_by_id).
+- **assets_module/index.asp**: Filtros de búsqueda (q, plant_id, status) migrados a ADODB.Command con parámetros.
+- **users/index.asp**: Filtros de búsqueda (q, role, status) migrados a ADODB.Command con parámetros.
+- **plants/index.asp**: Filtro de búsqueda (q) migrado a ADODB.Command con parámetros.
+- **admin/logs.asp**: Filtros (user_id, module, date) migrados a ADODB.Command con parámetros.
+- **Resultado**: **100% de consultas SELECT con filtros parametrizados** en todos los módulos del sistema.
+
+### Fase 9 (2026-05-30 06:00): Migración Completa de Consultas UPDATE/INSERT a ADODB.Command en Todos los Módulos
+- Se migraron todas las consultas `UPDATE` e `INSERT` que usaban concatenación de strings a `ADODB.Command` con parámetros tipados.
+- **Archivos corregidos**:
+  - `modules/admin/settings.asp`: UPSERT de configuración migrado a comandos parametrizados.
+  - `modules/users/form.asp`: Actualización de contraseña migrada a comando parametrizado.
+  - `modules/users/profile.asp`: Cambio de contraseña migrado a comando parametrizado.
+  - `modules/users/index.asp`: Desactivación de usuarios migrada a comando parametrizado.
+  - `modules/work_orders/form.asp`: Actualización de `completed_at` y `closed_by_id` migrada a comando parametrizado.
+  - `modules/assets_module/index.asp`: Retiro de equipos migrado a comando parametrizado.
+  - `modules/plants/index.asp`: Desactivación de plantas migrada a comando parametrizado.
+  - `modules/inventory/form.asp`: Creación de stock inicial migrada a comando parametrizado.
+  - `modules/inventory/movements.asp`: Actualización/creación de stock migrada a comandos parametrizados.
+- **Resultado**: **100% de consultas de escritura (INSERT/UPDATE) parametrizadas** en todos los módulos del sistema, eliminando completamente el riesgo de SQL Injection en operaciones de modificación de datos.
+
 ### Fase 8 (2026-05-30 05:12): Migración Completa de Filtros LIKE a ADODB.Command
 - **work_orders/index.asp**: Filtros de búsqueda (q, type, status, plant_id) migrados de `Replace()` manual a `ADODB.Command` con parámetros.
 - **inventory/index.asp**: Filtros de búsqueda (q, plant_id, status) migrados a `ADODB.Command` con parámetros.
@@ -128,17 +151,19 @@ C:\CMMS\
 ### ✅ Prioridades Altas Completadas
 1. ~~**Migración completa de filtros LIKE a ADODB.Command**~~ ✅ **COMPLETADO en Fase 8** — 100% de consultas parametrizadas en módulos core.
 2. ~~**Agregar validación CSRF en `work_orders/detail.asp`**~~ ✅ **COMPLETADO en Fase 7**
+3. ~~**Migración de INSERT/UPDATE a ADODB.Command en todos los módulos**~~ ✅ **COMPLETADO en Fase 9**
+4. ~~**Migración de filtros SELECT LIKE en módulos restantes**~~ ✅ **COMPLETADO en Fase 10** — 100% de consultas SELECT con filtros parametrizados en todo el sistema.
 
 ### Prioridad Media (Próximas a trabajar)
-3. **Pruebas del Flujo de Trabajo Completo**:
+5. **Pruebas del Flujo de Trabajo Completo**:
    - Crear solicitud de trabajo como usuario `viewer`/`technician`.
    - Aprobar como `supervisor` y verificar generación automática de OT.
    - Completar la OT y verificar actualización de inventario y horas.
-4. **Módulo de Tareas Programadas / Mantenimiento Preventivo**: Implementar servicio en segundo plano usando `cmms_scheduled_reports`.
+6. **Módulo de Tareas Programadas / Mantenimiento Preventivo**: Implementar servicio en segundo plano usando `cmms_scheduled_reports`.
 
 ### Prioridad Baja
-5. **Mapeo de Rutas de API REST**: Desarrollo de `api/` para consumo móvil por técnicos en campo.
-6. **Optimización de consultas KPI**: Las consultas de KPIs en dashboards usan GROUP BY sin parámetros, revisar eficiencia.
+7. **Mapeo de Rutas de API REST**: Desarrollo de `api/` para consumo móvil por técnicos en campo.
+8. **Optimización de consultas KPI**: Las consultas de KPIs en dashboards usan GROUP BY sin parámetros, revisar eficiencia.
 
 ---
 

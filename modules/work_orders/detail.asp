@@ -22,6 +22,10 @@ Dim PageModule : PageModule = "work_orders"
 
 ' Post actions for tabs
 If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
+    If Not ValidateCSRF() Then
+        SetFlashMessage "danger", "Token de seguridad invalido."
+        RedirectTo "detail.asp?id=" & itemId & "&tab=" & Request.Form("current_tab")
+    End If
     Dim tabAction : tabAction = Request.Form("action")
     
     If tabAction = "add_comment" Then
@@ -180,6 +184,7 @@ If activeTab = "" Then activeTab = "info"
       <% End If : rsComments.Close : Set rsComments = Nothing %>
 
       <form method="POST" action="detail.asp?id=<%= itemId %>">
+        <%= CSRFField() %>
         <input type="hidden" name="action" value="add_comment">
         <input type="hidden" name="current_tab" value="comments">
         <div class="form-group">
@@ -224,6 +229,7 @@ If activeTab = "" Then activeTab = "info"
           <div style="background:var(--bg-elevated);padding:16px;border-radius:8px;border:1px solid var(--border-subtle)">
             <h4 style="margin-bottom:12px">Registrar Trabajo</h4>
             <form method="POST" action="detail.asp?id=<%= itemId %>">
+              <%= CSRFField() %>
               <input type="hidden" name="action" value="add_time">
               <input type="hidden" name="current_tab" value="time">
               <div class="form-group">
@@ -253,6 +259,7 @@ If activeTab = "" Then activeTab = "info"
     </div>
     <div class="modal-body">
       <form method="POST" action="detail.asp?id=<%= itemId %>" id="formStatus">
+        <%= CSRFField() %>
         <input type="hidden" name="action" value="change_status">
         <input type="hidden" name="current_tab" value="<%= HtmlEncode(activeTab) %>">
         <div class="form-group">

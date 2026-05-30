@@ -1,5 +1,12 @@
 # Changelog del Sistema CMMS
 
+## 2026-05-30 05:07:00
+* **Fase 7: Protección CSRF en Módulo de Órdenes de Trabajo y Regla de Commits Automáticos**
+  * Se agregó validación de token CSRF (`ValidateCSRF()`) en todas las acciones POST del archivo `modules/work_orders/detail.asp` (add_comment, add_time, change_status).
+  * Se agregaron campos ocultos `CSRFField()` en los 3 formularios del detalle de OT (comentarios, registro de tiempo y modal de cambio de estado).
+  * Se actualizó `CONTRIBUTING.md` - RG-09 ahora incluye la regla de **commits automáticos con mensaje descriptivo** después de cada bloque de cambios.
+  * Se actualizó `GEMINI_CONTEXT.md` marcando las prioridades altas como completadas.
+
 ## 2026-05-30 04:40:00
 * **Fase 6: Auditoría de Seguridad - Corrección de Vulnerabilidades SQLi en Módulos Core**
   * Se realizó auditoría de seguridad en los módulos funcionales core: Órdenes de Trabajo (`work_orders/`) e Inventario (`inventory/`).

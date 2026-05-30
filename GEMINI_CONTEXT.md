@@ -103,6 +103,13 @@ C:\CMMS\
   - `reporte_seguridad.md` (ACTUALIZADO): Tabla detallada de hallazgos y correcciones.
   - `CHANGELOG.md` (ACTUALIZADO): Nueva entrada Fase 6.
 
+### Fase 7 (2026-05-30 05:07): Protección CSRF y Regla de Commits Automáticos
+- **CSRF implementado** en `modules/work_orders/detail.asp`:
+  - Validación `ValidateCSRF()` en todas las acciones POST (add_comment, add_time, change_status).
+  - Campos ocultos `CSRFField()` en los 3 formularios del detalle de OT.
+- **CONTRIBUTING.md actualizado**: RG-09 ahora incluye commits automáticos con mensaje descriptivo.
+- **Próximos pasos actualizados**: Backlog refleja prioridad alta #2 como completada.
+
 ### Fase 5 (2026-05-30 03:20): Sincronización de BD y Contexto IA
 - Sincronización de esquemas SQL (`mssql.sql`, `mysql.sql`, `sqlite.sql`) con tablas `cmms_work_requests` y `cmms_scheduled_reports`.
 - Reparación de corrupción de encoding UTF-16 en `sql/mssql.sql`.
@@ -114,7 +121,7 @@ C:\CMMS\
 
 ### Prioridad Alta
 1. **Migración completa de filtros LIKE a ADODB.Command**: En `work_orders/index.asp` e `inventory/index.asp` aún se usa escape manual con `Replace()` para los filtros de búsqueda. Aunque funcional, migrar a consultas parametrizadas para consistencia total de seguridad.
-2. **Agregar validación CSRF en `work_orders/detail.asp`**: Las acciones POST (change_status, add_comment, add_time) actualmente no validan tokens CSRF.
+2. ~~**Agregar validación CSRF en `work_orders/detail.asp`**~~ ✅ **COMPLETADO en Fase 7**
 
 ### Prioridad Media
 3. **Pruebas del Flujo de Trabajo Completo**:

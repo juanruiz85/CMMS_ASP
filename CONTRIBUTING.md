@@ -63,12 +63,20 @@ Este documento establece las reglas y pautas estrictas para todo desarrollo, mod
 - Las funciones deben seguir el patrón: nombre en PascalCase.
 - Las variables en camelCase (ej: `itemId`, `filterQuery`).
 
-### RG-09: Gestión de Cambios
+### RG-09: Gestión de Cambios y Commits Automáticos
+- **Siempre hacer commit con mensaje descriptivo automático** después de completar un bloque de cambios.
+- El mensaje de commit debe incluir:
+  - Fase/número de iteración
+  - Qué se hizo (archivos modificados/creados)
+  - Por qué se hizo (motivo del cambio)
+- Usar el formato: `Fase X: Breve descripción del cambio`
+- Ejemplo: `Fase 7: Agregar validación CSRF en work_orders/detail.asp`
 - Después de una sesión de desarrollo:
   1. Actualizar `CHANGELOG.md` con una entrada descriptiva.
   2. Actualizar `README.md` si cambió la estructura o requisitos.
   3. Actualizar `GEMINI_CONTEXT.md` con el estado actual y próximos pasos.
   4. Actualizar `CONTRIBUTING.md` si se identificaron nuevas reglas.
+  5. Hacer commit con mensaje automático descriptivo.
 
 ### RG-10: Conexiones a Base de Datos
 - Siempre cerrar conexiones con `CloseConnection(oConn)`.

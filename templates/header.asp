@@ -37,9 +37,9 @@ End If
 
 ' Contar notificaciones no leídas (solo si el usuario es válido)
 Dim UnreadNotifCount : UnreadNotifCount = 0
-Dim currentUserId : currentUserId = CurrentUserId()
-If currentUserId > 0 Then
-    UnreadNotifCount = CountUnreadNotifications(currentUserId)
+Dim uid : uid = CurrentUserId()
+If uid > 0 Then
+    UnreadNotifCount = CountUnreadNotifications(uid)
 End If
 
 

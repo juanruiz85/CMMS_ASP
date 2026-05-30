@@ -487,43 +487,108 @@ End Function
       <!-- ══════════════════════ PASO 2: Conexión ══════════════════════ -->
       <% ElseIf Step = "2" Then %>
       <h3 style="color:var(--text-primary);margin-bottom:6px">Configuración de Conexión</h3>
-      <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px">Ingrese los datos de conexión a SQL Server</p>
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px" id="step2-subtitle">Ingrese los datos de conexión a SQL Server</p>
       
       <form method="POST" action="install.asp" data-validate id="connForm">
         <input type="hidden" name="action" value="test_save">
+        <input type="hidden" name="db_type" value="<%= Server.HTMLEncode(Request.Form("db_type")) %>">
         
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Servidor SQL <span class="required">*</span></label>
-            <input type="text" name="db_server" class="form-control" required
-                   placeholder="Ej: SQLSERVER01, .\SQLEXPRESS, 192.168.1.10"
-                   value="<%= Server.HTMLEncode(Request.Form("db_server")) %>">
-            <div class="form-hint">Nombre del servidor o IP. Para instancia local: .\SQLEXPRESS o (local)</div>
+        <!-- Campos SQL Server -->
+        <div id="fields-sqlserver">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Servidor SQL <span class="required">*</span></label>
+              <input type="text" name="db_server" class="form-control" required
+                     placeholder="Ej: SQLSERVER01, .\SQLEXPRESS, 192.168.1.10"
+                     value="<%= Server.HTMLEncode(Request.Form("db_server")) %>">
+              <div class="form-hint">Nombre del servidor o IP. Para instancia local: .\SQLEXPRESS o (local)</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Base de Datos <span class="required">*</span></label>
+              <input type="text" name="db_name" class="form-control" required
+                     placeholder="Ej: CMMS_DB"
+                     value="<%= Server.HTMLEncode(IIf(Request.Form("db_name") <> "", Request.Form("db_name"), "CMMS_DB")) %>">
+              <div class="form-hint">La BD debe existir previamente</div>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Base de Datos <span class="required">*</span></label>
-            <input type="text" name="db_name" class="form-control" required
-                   placeholder="Ej: CMMS_DB"
-                   value="<%= Server.HTMLEncode(IIf(Request.Form("db_name") <> "", Request.Form("db_name"), "CMMS_DB")) %>">
-            <div class="form-hint">La BD debe existir previamente</div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Usuario SQL <span class="required">*</span></label>
+              <input type="text" name="db_user" class="form-control" required
+                     placeholder="Ej: sa, cmms_user"
+                     value="<%= Server.HTMLEncode(Request.Form("db_user")) %>">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contraseña SQL <span class="required">*</span></label>
+              <input type="password" name="db_pass" class="form-control" required
+                     placeholder="Contraseña del usuario SQL">
+            </div>
           </div>
         </div>
         
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Usuario SQL <span class="required">*</span></label>
-            <input type="text" name="db_user" class="form-control" required
-                   placeholder="Ej: sa, cmms_user"
-                   value="<%= Server.HTMLEncode(Request.Form("db_user")) %>">
+        <!-- Campos MySQL -->
+        <div id="fields-mysql" style="display:none">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Servidor MySQL <span class="required">*</span></label>
+              <input type="text" name="db_server" class="form-control" required
+                     placeholder="Ej: localhost, 192.168.1.10"
+                     value="<%= Server.HTMLEncode(Request.Form("db_server")) %>">
+              <div class="form-hint">Nombre del servidor o IP</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Puerto <span class="required">*</span></label>
+              <input type="text" name="db_port" class="form-control" required
+                     placeholder="3306"
+                     value="<%= Server.HTMLEncode(IIf(Request.Form("db_port") <> "", Request.Form("db_port"), "3306")) %>">
+              <div class="form-hint">Puerto MySQL (default: 3306)</div>
+            </div>
           </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Base de Datos <span class="required">*</span></label>
+              <input type="text" name="db_name" class="form-control" required
+                     placeholder="Ej: cmms_db"
+                     value="<%= Server.HTMLEncode(IIf(Request.Form("db_name") <> "", Request.Form("db_name"), "cmms_db")) %>">
+              <div class="form-hint">La BD debe existir previamente</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Usuario MySQL <span class="required">*</span></label>
+              <input type="text" name="db_user" class="form-control" required
+                     placeholder="Ej: root, cmms_user"
+                     value="<%= Server.HTMLEncode(Request.Form("db_user")) %>">
+            </div>
+          </div>
+          
           <div class="form-group">
-            <label class="form-label">Contraseña SQL <span class="required">*</span></label>
+            <label class="form-label">Contraseña MySQL <span class="required">*</span></label>
             <input type="password" name="db_pass" class="form-control" required
-                   placeholder="Contraseña del usuario SQL">
+                   placeholder="Contraseña del usuario MySQL">
+          </div>
+        </div>
+        
+        <!-- Campos SQLite -->
+        <div id="fields-sqlite" style="display:none">
+          <div class="form-group">
+            <label class="form-label">Ruta del Archivo SQLite <span class="required">*</span></label>
+            <input type="text" name="db_file" class="form-control" required
+                   placeholder="Ej: C:\inetpub\wwwroot\CMMS\data\cmms.db"
+                   value="<%= Server.HTMLEncode(IIf(Request.Form("db_file") <> "", Request.Form("db_file"), Server.MapPath("/CMMS/data/cmms.db"))) %>">
+            <div class="form-hint">Ruta completa del archivo .db (se creará automáticamente si no existe)</div>
+          </div>
+          
+          <div style="background:var(--info-light);border:1px solid rgba(59,130,246,0.3);border-radius:8px;padding:12px;margin-bottom:20px;font-size:12px;color:var(--info)">
+            ℹ️ <strong>SQLite:</strong> No requiere servidor de base de datos. El archivo se creará en la ruta especificada. Asegúrese de que IIS tenga permisos de escritura en esa carpeta.
           </div>
         </div>
 
-        <div style="background:var(--warning-light);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:12px;margin-bottom:20px;font-size:12px;color:var(--warning)">
+        <div id="warning-sqlserver" style="background:var(--warning-light);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:12px;margin-bottom:20px;font-size:12px;color:var(--warning)">
+          ⚠️ <strong>Importante:</strong> El usuario debe tener permisos para crear tablas e insertar datos en la base de datos especificada.
+        </div>
+        
+        <div id="warning-mysql" style="display:none;background:var(--warning-light);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:12px;margin-bottom:20px;font-size:12px;color:var(--warning)">
           ⚠️ <strong>Importante:</strong> El usuario debe tener permisos para crear tablas e insertar datos en la base de datos especificada.
         </div>
 
@@ -634,21 +699,91 @@ function selectDB(type) {
     document.querySelectorAll('.db-type-card').forEach(c => c.classList.remove('selected'));
     document.getElementById('card-' + type).classList.add('selected');
     
-    // Actualizar campo oculto
+    // Actualizar campo oculto en paso 1
     document.getElementById('selected_db_type').value = type;
     
-    // Mostrar requisitos específicos
+    // Mostrar requisitos específicos en paso 1
     document.getElementById('req-sqlserver').style.display = (type === 'sqlserver') ? '' : 'none';
     document.getElementById('req-sqlserver2').style.display = (type === 'sqlserver') ? '' : 'none';
     document.getElementById('req-mysql').style.display = (type === 'mysql') ? '' : 'none';
     document.getElementById('req-mysql2').style.display = (type === 'mysql') ? '' : 'none';
     document.getElementById('req-sqlite').style.display = (type === 'sqlite') ? '' : 'none';
+    
+    // Actualizar formulario en paso 2
+    updateStep2Form(type);
+}
+
+function updateStep2Form(type) {
+    // Ocultar todos los campos
+    document.getElementById('fields-sqlserver').style.display = 'none';
+    document.getElementById('fields-mysql').style.display = 'none';
+    document.getElementById('fields-sqlite').style.display = 'none';
+    document.getElementById('warning-sqlserver').style.display = 'none';
+    document.getElementById('warning-mysql').style.display = 'none';
+    
+    // Actualizar subtítulo
+    var subtitle = document.getElementById('step2-subtitle');
+    
+    // Mostrar campos según tipo
+    if (type === 'sqlserver') {
+        document.getElementById('fields-sqlserver').style.display = '';
+        document.getElementById('warning-sqlserver').style.display = '';
+        subtitle.textContent = 'Ingrese los datos de conexión a SQL Server';
+        
+        // Hacer requeridos los campos de SQL Server
+        setRequired('db_server', true);
+        setRequired('db_name', true);
+        setRequired('db_user', true);
+        setRequired('db_pass', true);
+        setRequired('db_port', false);
+        setRequired('db_file', false);
+        
+    } else if (type === 'mysql') {
+        document.getElementById('fields-mysql').style.display = '';
+        document.getElementById('warning-mysql').style.display = '';
+        subtitle.textContent = 'Ingrese los datos de conexión a MySQL';
+        
+        // Hacer requeridos los campos de MySQL
+        setRequired('db_server', true);
+        setRequired('db_name', true);
+        setRequired('db_user', true);
+        setRequired('db_pass', true);
+        setRequired('db_port', true);
+        setRequired('db_file', false);
+        
+    } else if (type === 'sqlite') {
+        document.getElementById('fields-sqlite').style.display = '';
+        subtitle.textContent = 'Configure la ruta del archivo SQLite';
+        
+        // Hacer requeridos los campos de SQLite
+        setRequired('db_server', false);
+        setRequired('db_name', false);
+        setRequired('db_user', false);
+        setRequired('db_pass', false);
+        setRequired('db_port', false);
+        setRequired('db_file', true);
+    }
+}
+
+function setRequired(fieldName, required) {
+    var inputs = document.getElementsByName(fieldName);
+    for (var i = 0; i < inputs.length; i++) {
+        inputs[i].required = required;
+    }
 }
 
 function validateStep1() {
     // Guardar el tipo seleccionado en la sesión para el paso 2
     return true;
 }
+
+// Inicializar formulario al cargar
+document.addEventListener('DOMContentLoaded', function() {
+    var dbTypeInput = document.querySelector('input[name="db_type"]');
+    if (dbTypeInput && dbTypeInput.value) {
+        updateStep2Form(dbTypeInput.value);
+    }
+});
 
 document.getElementById('connForm') && document.getElementById('connForm').addEventListener('submit', function(){
     const btn = document.getElementById('testBtn');

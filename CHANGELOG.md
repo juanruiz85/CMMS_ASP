@@ -1,5 +1,20 @@
 # Changelog del Sistema CMMS
 
+## 2026-05-30 08:15:00
+* **Fix: Formulario dinámico en install.asp según tipo de BD (SQL Server, MySQL, SQLite)**
+  * Se implementó un formulario dinámico que muestra solo los campos relevantes para cada tipo de base de datos seleccionada.
+  * **Problema**: Al seleccionar SQLite, el instalador seguía mostrando todos los campos de SQL Server (servidor, usuario, contraseña), causando confusión y errores.
+  * **Solución**: 
+    - **SQL Server**: Muestra servidor, base de datos, usuario y contraseña
+    - **MySQL**: Muestra servidor, puerto, base de datos, usuario y contraseña
+    - **SQLite**: Solo muestra ruta del archivo .db con información clara sobre creación automática
+  * **Mejoras adicionales**:
+    - Subtítulo dinámico que cambia según el tipo de BD seleccionado
+    - Validación JavaScript que requiere solo los campos necesarios para cada tipo
+    - Mensajes de advertencia específicos para cada tipo de BD
+    - Inicialización automática del formulario al cargar la página
+  * **Resultado**: El instalador ahora proporciona una experiencia de usuario clara y específica para cada tipo de base de datos, eliminando confusiones y errores durante la instalación.
+
 ## 2026-05-30 07:45:00
 * **Fix: Agregar función IIf personalizada en install.asp**
   * Se agregó la función `IIf(condition, trueValue, falseValue)` al inicio del archivo `install.asp`.

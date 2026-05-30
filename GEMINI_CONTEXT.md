@@ -88,6 +88,18 @@ C:\CMMS\
 
 ## 🔄 Últimos Cambios Realizados
 
+### Fix (2026-05-30 08:15): Formulario Dinámico Multi-BD en install.asp
+- **install.asp**: Se implementó formulario dinámico que muestra solo los campos relevantes según el tipo de base de datos seleccionada:
+  - **SQL Server**: Muestra servidor, base de datos, usuario y contraseña
+  - **MySQL**: Muestra servidor, puerto, base de datos, usuario y contraseña  
+  - **SQLite**: Solo muestra ruta del archivo .db con información clara sobre creación automática
+- **Mejoras adicionales**:
+  - Subtítulo dinámico que cambia según el tipo de BD seleccionado
+  - Validación JavaScript que requiere solo los campos necesarios para cada tipo
+  - Mensajes de advertencia específicos para cada tipo de BD
+  - Inicialización automática del formulario al cargar la página
+- **Resultado**: El instalador ahora proporciona una experiencia de usuario clara y específica para cada tipo de base de datos, eliminando confusiones y errores durante la instalación.
+
 ### Fix (2026-05-30 07:45): Corrección de Errores en install.asp
 - **install.asp**: Se agregaron dos fixes críticos para el instalador:
   - **Fix 1**: Se corrigió error `Unterminated string constant` (línea 255) cambiando `WriteLine "<%"` a `WriteLine "<" & "%"` y `WriteLine "%>"` a `WriteLine "%" & ">"`.

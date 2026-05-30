@@ -487,14 +487,33 @@ End Function
       <!-- ══════════════════════ PASO 2: Conexión ══════════════════════ -->
       <% ElseIf Step = "2" Then %>
       <h3 style="color:var(--text-primary);margin-bottom:6px">Configuración de Conexión</h3>
-      <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px" id="step2-subtitle">Ingrese los datos de conexión a SQL Server</p>
+      
+      <% 
+        ' Determinar tipo de BD desde POST o session
+        Dim currentDbType
+        currentDbType = LCase(Trim(Request.Form("db_type")))
+        If currentDbType = "" Then currentDbType = "sqlserver"
+        
+        ' Actualizar subtítulo según tipo de BD
+        Dim step2Subtitle
+        Select Case currentDbType
+            Case "mysql"
+                step2Subtitle = "Ingrese los datos de conexión a MySQL"
+            Case "sqlite"
+                step2Subtitle = "Configure la ruta del archivo SQLite"
+            Case Else
+                step2Subtitle = "Ingrese los datos de conexión a SQL Server"
+        End Select
+      %>
+      
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px" id="step2-subtitle"><%= step2Subtitle %></p>
       
       <form method="POST" action="install.asp" data-validate id="connForm">
         <input type="hidden" name="action" value="test_save">
-        <input type="hidden" name="db_type" value="<%= Server.HTMLEncode(Request.Form("db_type")) %>">
+        <input type="hidden" name="db_type" value="<%= currentDbType %>">
         
         <!-- Campos SQL Server -->
-        <div id="fields-sqlserver">
+        <div id="fields-sqlserver" style="<%= IIf(currentDbType = "sqlserver", "", "display:none") %>">
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Servidor SQL <span class="required">*</span></label>
@@ -528,7 +547,7 @@ End Function
         </div>
         
         <!-- Campos MySQL -->
-        <div id="fields-mysql" style="display:none">
+        <div id="fields-mysql" style="<%= IIf(currentDbType = "mysql", "", "display:none") %>">
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Servidor MySQL <span class="required">*</span></label>
@@ -570,7 +589,7 @@ End Function
         </div>
         
         <!-- Campos SQLite -->
-        <div id="fields-sqlite" style="display:none">
+        <div id="fields-sqlite" style="<%= IIf(currentDbType = "sqlite", "", "display:none") %>">
           <div class="form-group">
             <label class="form-label">Ruta del Archivo SQLite <span class="required">*</span></label>
             <input type="text" name="db_file" class="form-control" required
@@ -584,11 +603,11 @@ End Function
           </div>
         </div>
 
-        <div id="warning-sqlserver" style="background:var(--warning-light);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:12px;margin-bottom:20px;font-size:12px;color:var(--warning)">
+        <div id="warning-sqlserver" style="<%= IIf(currentDbType = "sqlserver", "", "display:none") %>;background:var(--warning-light);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:12px;margin-bottom:20px;font-size:12px;color:var(--warning)">
           ⚠️ <strong>Importante:</strong> El usuario debe tener permisos para crear tablas e insertar datos en la base de datos especificada.
         </div>
         
-        <div id="warning-mysql" style="display:none;background:var(--warning-light);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:12px;margin-bottom:20px;font-size:12px;color:var(--warning)">
+        <div id="warning-mysql" style="<%= IIf(currentDbType = "mysql", "", "display:none") %>;background:var(--warning-light);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:12px;margin-bottom:20px;font-size:12px;color:var(--warning)">
           ⚠️ <strong>Importante:</strong> El usuario debe tener permisos para crear tablas e insertar datos en la base de datos especificada.
         </div>
 

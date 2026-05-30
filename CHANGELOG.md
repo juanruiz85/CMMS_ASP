@@ -1,5 +1,16 @@
 # Changelog del Sistema CMMS
 
+## 2026-05-30 09:00:00
+* **Fix: Renderizado server-side de campos según tipo de BD en install.asp**
+  * Se corrigió el problema donde al seleccionar SQLite o MySQL en el instalador, se seguían mostrando los campos de SQL Server.
+  * **Problema**: La lógica JavaScript para mostrar/ocultar campos no se ejecutaba correctamente al cargar la página en el Paso 2, mostrando siempre los campos de SQL Server independientemente del tipo de BD seleccionado en el Paso 1.
+  * **Solución**: 
+    - Implementación de renderizado server-side que determina el tipo de BD desde `Request.Form("db_type")` al cargar el Paso 2
+    - Los campos de cada tipo de BD (SQL Server, MySQL, SQLite) ahora tienen estilos inline generados dinámicamente con `IIf()` para mostrar/ocultar según corresponda
+    - El subtítulo del formulario cambia dinámicamente según el tipo de BD seleccionado
+    - Las advertencias específicas también se muestran solo para el tipo de BD correspondiente
+  * **Resultado**: Al seleccionar SQLite, el usuario ve únicamente el campo para especificar la ruta del archivo `.db`. Para MySQL ve servidor, puerto, base de datos, usuario y contraseña. Para SQL Server ve servidor, base de datos, usuario y contraseña. Cada tipo muestra solo lo necesario.
+
 ## 2026-05-30 08:15:00
 * **Fix: Formulario dinámico en install.asp según tipo de BD (SQL Server, MySQL, SQLite)**
   * Se implementó un formulario dinámico que muestra solo los campos relevantes para cada tipo de base de datos seleccionada.

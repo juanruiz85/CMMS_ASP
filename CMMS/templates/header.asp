@@ -12,19 +12,14 @@
 
 ' Valores por defecto (solo si no fueron establecidas por la página que llama)
 On Error Resume Next
-If Not IsDefined("PageTitle") Then PageTitle = T("app_name")
-If Not IsDefined("PageModule") Then PageModule = ""
+If IsEmpty(PageTitle) Then PageTitle = T("app_name")
+If IsEmpty(PageModule) Then PageModule = ""
 On Error GoTo 0
 
 ' Contar notificaciones no leídas
 Dim UnreadNotifCount : UnreadNotifCount = CountUnreadNotifications(CurrentUserId())
 
-Function IsDefined(varName)
-    On Error Resume Next
-    Dim v : v = Eval(varName)
-    IsDefined = (Err.Number = 0)
-    On Error GoTo 0
-End Function
+
 %><!DOCTYPE html>
 <html lang="<%= IIf(Session("user_lang") = "en", "en", "es") %>">
 <head>

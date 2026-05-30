@@ -216,7 +216,7 @@ Function RunInstaller(dbSrv, dbNm, dbUsr, dbPwd, admUser, admPass, admEmail, adm
     Dim configPath : configPath = Server.MapPath("/CMMS/config/database.asp")
     Dim oConfigFile : Set oConfigFile = oFS2.CreateTextFile(configPath, True)
     
-    oConfigFile.WriteLine "<%"
+    oConfigFile.WriteLine "<" & "%"
     oConfigFile.WriteLine "' CMMS - Configuración de Base de Datos (GENERADO POR INSTALADOR)"
     oConfigFile.WriteLine "' Generado: " & Now()
     oConfigFile.WriteLine "Const DB_TYPE     = ""sqlserver"""
@@ -252,7 +252,7 @@ Function RunInstaller(dbSrv, dbNm, dbUsr, dbPwd, admUser, admPass, admEmail, adm
     oConfigFile.WriteLine "        Set oConn = Nothing"
     oConfigFile.WriteLine "    End If"
     oConfigFile.WriteLine "End Sub"
-    oConfigFile.WriteLine "%>"
+    oConfigFile.WriteLine "%" & ">"
     oConfigFile.Close
     Set oConfigFile = Nothing
     Set oFS2 = Nothing

@@ -33,14 +33,21 @@ Dim filterPlant  : filterPlant  = QSInt("plant_id")
 Dim filterStatus : filterStatus = Trim(Request.QueryString("status"))
 
 Dim sqlWhere : sqlWhere = " WHERE 1=1 "
+Dim cmdParams : Set cmdParams = Server.CreateObject("ADODB.Command")
+
 If filterQuery <> "" Then
-    sqlWhere = sqlWhere & " AND (i.name LIKE '%" & Replace(filterQuery, "'", "''") & "%' OR i.code LIKE '%" & Replace(filterQuery, "'", "''") & "%' OR i.part_number LIKE '%" & Replace(filterQuery, "'", "''") & "%') "
+    sqlWhere = sqlWhere & " AND (i.name LIKE ? OR i.code LIKE ? OR i.part_number LIKE ?) "
+    cmdParams.Parameters.Append cmdParams.CreateParameter("@q1", 200, 1, 255, "%" & filterQuery & "%")
+    cmdParams.Parameters.Append cmdParams.CreateParameter("@q2", 200, 1, 255, "%" & filterQuery & "%")
+    cmdParams.Parameters.Append cmdParams.CreateParameter("@q3", 200, 1, 255, "%" & filterQuery & "%")
 End If
 If filterPlant > 0 Then
-    sqlWhere = sqlWhere & " AND i.plant_id = " & filterPlant
+    sqlWhere = sqlWhere & " AND i.plant_id = ? "
+    cmdParams.Parameters.Append cmdParams.CreateParameter("@plant", 3, 1, , filterPlant)
 End If
 If filterStatus <> "" Then
-    sqlWhere = sqlWhere & " AND i.status = '" & Replace(filterStatus, "'", "''") & "' "
+    sqlWhere = sqlWhere & " AND i.status = ? "
+    cmdParams.Parameters.Append cmdParams.CreateParameter("@status", 200, 1, 50, filterStatus)
 End If
 
 ' Pagination
@@ -50,13 +57,22 @@ Dim offset      : offset = (currentPage - 1) * perPage
 
 ' Count total
 Dim totalRows : totalRows = 0
-Dim rsTotal
-Set rsTotal = oConn.Execute("SELECT COUNT(*) AS cnt FROM cmms_inventory i " & sqlWhere)
+Dim rsTotal, cmdCount
+Set cmdCount = Server.CreateObject("ADODB.Command")
+cmdCount.ActiveConnection = oConn
+cmdCount.CommandText = "SELECT COUNT(*) AS cnt FROM cmms_inventory i " & sqlWhere
+Dim iCnt
+For iCnt = 0 To cmdParams.Parameters.Count - 1
+    cmdCount.Parameters.Append cmdParams.Parameters(iCnt)
+Next
+Set rsTotal = cmdCount.Execute()
 If Not rsTotal.EOF Then totalRows = rsTotal("cnt")
 rsTotal.Close : Set rsTotal = Nothing
+Set cmdCount = Nothing
 
 ' Get data
 Dim sql
+Dim sql, rsInv, cmdData
 sql = "SELECT i.*, p.name AS plant_name, ISNULL((SELECT SUM(quantity) FROM cmms_inventory_stock WHERE inventory_id = i.id), 0) AS total_stock " & _
       "FROM cmms_inventory i " & _
       "LEFT JOIN cmms_plants p ON p.id = i.plant_id " & _
@@ -64,8 +80,16 @@ sql = "SELECT i.*, p.name AS plant_name, ISNULL((SELECT SUM(quantity) FROM cmms_
       "ORDER BY i.name " & _
       "OFFSET " & offset & " ROWS FETCH NEXT " & perPage & " ROWS ONLY"
 
-Dim rsInv
-Set rsInv = oConn.Execute(sql)
+Set cmdData = Server.CreateObject("ADODB.Command")
+cmdData.ActiveConnection = oConn
+cmdData.CommandText = sql
+Dim iData
+For iData = 0 To cmdParams.Parameters.Count - 1
+    cmdData.Parameters.Append cmdParams.Parameters(iData)
+Next
+Set rsInv = cmdData.Execute()
+Set cmdData = Nothing
+Set cmdParams = Nothing
 
 ' Get plants for filter
 Dim rsPlantsFilter

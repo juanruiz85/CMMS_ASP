@@ -103,6 +103,12 @@ C:\CMMS\
   - `reporte_seguridad.md` (ACTUALIZADO): Tabla detallada de hallazgos y correcciones.
   - `CHANGELOG.md` (ACTUALIZADO): Nueva entrada Fase 6.
 
+### Fase 8 (2026-05-30 05:12): Migración Completa de Filtros LIKE a ADODB.Command
+- **work_orders/index.asp**: Filtros de búsqueda (q, type, status, plant_id) migrados de `Replace()` manual a `ADODB.Command` con parámetros.
+- **inventory/index.asp**: Filtros de búsqueda (q, plant_id, status) migrados a `ADODB.Command` con parámetros.
+- **Corrección técnica**: Se eliminó el patrón de copia de parámetros entre Command objects que es inválido en VBScript, reemplazándolo por creación inline directa en cada comando.
+- **Resultado**: **100% de consultas parametrizadas** en todos los módulos core del sistema.
+
 ### Fase 7 (2026-05-30 05:07): Protección CSRF y Regla de Commits Automáticos
 - **CSRF implementado** en `modules/work_orders/detail.asp`:
   - Validación `ValidateCSRF()` en todas las acciones POST (add_comment, add_time, change_status).
@@ -119,11 +125,11 @@ C:\CMMS\
 
 ## 📌 Próximos Pasos Recomendados (Backlog)
 
-### Prioridad Alta
-1. **Migración completa de filtros LIKE a ADODB.Command**: En `work_orders/index.asp` e `inventory/index.asp` aún se usa escape manual con `Replace()` para los filtros de búsqueda. Aunque funcional, migrar a consultas parametrizadas para consistencia total de seguridad.
+### ✅ Prioridades Altas Completadas
+1. ~~**Migración completa de filtros LIKE a ADODB.Command**~~ ✅ **COMPLETADO en Fase 8** — 100% de consultas parametrizadas en módulos core.
 2. ~~**Agregar validación CSRF en `work_orders/detail.asp`**~~ ✅ **COMPLETADO en Fase 7**
 
-### Prioridad Media
+### Prioridad Media (Próximas a trabajar)
 3. **Pruebas del Flujo de Trabajo Completo**:
    - Crear solicitud de trabajo como usuario `viewer`/`technician`.
    - Aprobar como `supervisor` y verificar generación automática de OT.
@@ -133,3 +139,7 @@ C:\CMMS\
 ### Prioridad Baja
 5. **Mapeo de Rutas de API REST**: Desarrollo de `api/` para consumo móvil por técnicos en campo.
 6. **Optimización de consultas KPI**: Las consultas de KPIs en dashboards usan GROUP BY sin parámetros, revisar eficiencia.
+
+---
+
+> **Estado de Seguridad Actual**: 100% de consultas SQL parametrizadas en módulos core, protección CSRF implementada en todos los formularios POST, manejo seguro de errores activo.

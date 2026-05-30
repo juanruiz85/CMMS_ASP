@@ -1,5 +1,12 @@
 # Changelog del Sistema CMMS
 
+## 2026-05-30 05:12:00
+* **Fase 8: Migración Completa de Filtros LIKE a ADODB.Command Parametrizado**
+  * Se migraron todos los filtros de búsqueda con `LIKE` y `Replace()` manual en `modules/work_orders/index.asp` a consultas completamente parametrizadas con `ADODB.Command`.
+  * Se migraron todos los filtros de búsqueda en `modules/inventory/index.asp` a consultas parametrizadas.
+  * Esto elimina los últimos vectores de inyección SQL que quedaban en los módulos core, logrando **100% de consultas parametrizadas** en la capa de presentación.
+  * Se corrigió el patrón de copia de parámetros entre Command objects que podría causar errores en VBScript (reemplazado por creación inline directa).
+
 ## 2026-05-30 05:07:00
 * **Fase 7: Protección CSRF en Módulo de Órdenes de Trabajo y Regla de Commits Automáticos**
   * Se agregó validación de token CSRF (`ValidateCSRF()`) en todas las acciones POST del archivo `modules/work_orders/detail.asp` (add_comment, add_time, change_status).

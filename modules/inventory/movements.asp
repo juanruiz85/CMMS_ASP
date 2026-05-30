@@ -53,12 +53,26 @@ If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
             cmd.Execute
             
             ' Update stock (simplification: updating the first stock record or creating if not exists)
-            Dim rsStock
+            Dim rsStock, cmdStock
             Set rsStock = oConn.Execute("SELECT id FROM cmms_inventory_stock WHERE inventory_id=" & invId)
             If rsStock.EOF Then
-                oConn.Execute("INSERT INTO cmms_inventory_stock (inventory_id, plant_id, quantity, last_updated) SELECT id, plant_id, " & newQty & ", GETDATE() FROM cmms_inventory WHERE id=" & invId)
+                ' Create new stock record - need to get plant_id from inventory
+                Set cmdStock = Server.CreateObject("ADODB.Command")
+                Set cmdStock.ActiveConnection = oConn
+                cmdStock.CommandText = "INSERT INTO cmms_inventory_stock (inventory_id, plant_id, quantity, last_updated) SELECT ?, plant_id, ?, GETDATE() FROM cmms_inventory WHERE id=?"
+                cmdStock.Parameters.Append cmdStock.CreateParameter("@inv_id", 3, 1, , invId)
+                cmdStock.Parameters.Append cmdStock.CreateParameter("@qty", 14, 1, , newQty)
+                cmdStock.Parameters.Append cmdStock.CreateParameter("@check_id", 3, 1, , invId)
+                cmdStock.Execute
+                Set cmdStock = Nothing
             Else
-                oConn.Execute("UPDATE cmms_inventory_stock SET quantity=" & newQty & ", last_updated=GETDATE() WHERE id=" & rsStock("id"))
+                Set cmdStock = Server.CreateObject("ADODB.Command")
+                Set cmdStock.ActiveConnection = oConn
+                cmdStock.CommandText = "UPDATE cmms_inventory_stock SET quantity=?, last_updated=GETDATE() WHERE id=?"
+                cmdStock.Parameters.Append cmdStock.CreateParameter("@qty", 14, 1, , newQty)
+                cmdStock.Parameters.Append cmdStock.CreateParameter("@id", 3, 1, , rsStock("id"))
+                cmdStock.Execute
+                Set cmdStock = Nothing
             End If
             rsStock.Close : Set rsStock = Nothing
             

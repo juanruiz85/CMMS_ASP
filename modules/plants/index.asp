@@ -14,7 +14,13 @@ Dim oConn : Set oConn = GetConnection()
 If Request.QueryString("action") = "delete" And IsSupervisorOrAdmin() Then
     Dim delId : delId = QSInt("id")
     If delId > 0 Then
-        oConn.Execute("UPDATE cmms_plants SET status='inactive' WHERE id=" & delId)
+        Dim cmdDel
+        Set cmdDel = Server.CreateObject("ADODB.Command")
+        Set cmdDel.ActiveConnection = oConn
+        cmdDel.CommandText = "UPDATE cmms_plants SET status='inactive' WHERE id=?"
+        cmdDel.Parameters.Append cmdDel.CreateParameter("@id", 3, 1, , delId)
+        cmdDel.Execute
+        Set cmdDel = Nothing
         LogActivity CurrentUserId(), "DELETE_PLANT", "Planta desactivada ID: " & delId, "plants", delId
         SetFlashMessage "success", "Planta desactivada correctamente."
         RedirectTo "/CMMS/modules/plants/index.asp"

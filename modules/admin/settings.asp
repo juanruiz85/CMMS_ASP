@@ -27,12 +27,28 @@ If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
     If cSess < 10 Then cSess = 60
     
     ' UPSERT for settings
-    Dim rsS
+    Dim rsS, cmdS
     Set rsS = oConn.Execute("SELECT COUNT(*) AS cnt FROM cmms_settings")
     If rsS("cnt") > 0 Then
-        oConn.Execute("UPDATE cmms_settings SET company_name='" & Replace(cName, "'", "''") & "', timezone='" & Replace(cTZ, "'", "''") & "', currency='" & Replace(cCurr, "'", "''") & "', session_timeout=" & cSess)
+        Set cmdS = Server.CreateObject("ADODB.Command")
+        Set cmdS.ActiveConnection = oConn
+        cmdS.CommandText = "UPDATE cmms_settings SET company_name=?, timezone=?, currency=?, session_timeout=?"
+        cmdS.Parameters.Append cmdS.CreateParameter("@cname", 200, 1, 200, cName)
+        cmdS.Parameters.Append cmdS.CreateParameter("@tz", 200, 1, 50, cTZ)
+        cmdS.Parameters.Append cmdS.CreateParameter("@curr", 200, 1, 20, cCurr)
+        cmdS.Parameters.Append cmdS.CreateParameter("@sess", 3, 1, , cSess)
+        cmdS.Execute
+        Set cmdS = Nothing
     Else
-        oConn.Execute("INSERT INTO cmms_settings (company_name, timezone, currency, session_timeout) VALUES ('" & Replace(cName, "'", "''") & "', '" & Replace(cTZ, "'", "''") & "', '" & Replace(cCurr, "'", "''") & "', " & cSess & ")")
+        Set cmdS = Server.CreateObject("ADODB.Command")
+        Set cmdS.ActiveConnection = oConn
+        cmdS.CommandText = "INSERT INTO cmms_settings (company_name, timezone, currency, session_timeout) VALUES (?, ?, ?, ?)"
+        cmdS.Parameters.Append cmdS.CreateParameter("@cname", 200, 1, 200, cName)
+        cmdS.Parameters.Append cmdS.CreateParameter("@tz", 200, 1, 50, cTZ)
+        cmdS.Parameters.Append cmdS.CreateParameter("@curr", 200, 1, 20, cCurr)
+        cmdS.Parameters.Append cmdS.CreateParameter("@sess", 3, 1, , cSess)
+        cmdS.Execute
+        Set cmdS = Nothing
     End If
     rsS.Close : Set rsS = Nothing
     

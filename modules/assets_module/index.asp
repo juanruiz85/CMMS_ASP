@@ -14,7 +14,13 @@ Dim oConn : Set oConn = GetConnection()
 If Request.QueryString("action") = "delete" And IsSupervisorOrAdmin() Then
     Dim delId : delId = QSInt("id")
     If delId > 0 Then
-        oConn.Execute("UPDATE cmms_assets SET status='retired' WHERE id=" & delId)
+        Dim cmdDel
+        Set cmdDel = Server.CreateObject("ADODB.Command")
+        Set cmdDel.ActiveConnection = oConn
+        cmdDel.CommandText = "UPDATE cmms_assets SET status='retired' WHERE id=?"
+        cmdDel.Parameters.Append cmdDel.CreateParameter("@id", 3, 1, , delId)
+        cmdDel.Execute
+        Set cmdDel = Nothing
         LogActivity CurrentUserId(), "DELETE_ASSET", "Equipo retirado ID: " & delId, "assets", delId
         SetFlashMessage "success", "Equipo marcado como retirado."
         RedirectTo "/CMMS/modules/assets_module/index.asp"

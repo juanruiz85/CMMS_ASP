@@ -95,7 +95,14 @@ If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
         
         ' Si se cambió a completada
         If woStatus = "completed" Then
-            oConn.Execute("UPDATE cmms_work_orders SET completed_at=GETDATE(), closed_by_id=" & CurrentUserId() & " WHERE id=" & itemId & " AND completed_at IS NULL")
+            Dim cmdComplete
+            Set cmdComplete = Server.CreateObject("ADODB.Command")
+            Set cmdComplete.ActiveConnection = oConn
+            cmdComplete.CommandText = "UPDATE cmms_work_orders SET completed_at=GETDATE(), closed_by_id=? WHERE id=? AND completed_at IS NULL"
+            cmdComplete.Parameters.Append cmdComplete.CreateParameter("@closed_by", 3, 1, , CurrentUserId())
+            cmdComplete.Parameters.Append cmdComplete.CreateParameter("@id", 3, 1, , itemId)
+            cmdComplete.Execute
+            Set cmdComplete = Nothing
         End If
         
     Else

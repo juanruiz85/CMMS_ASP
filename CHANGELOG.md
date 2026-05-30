@@ -62,3 +62,19 @@
   * Configuración de la base de datos (`config/database.asp`).
   * Definición de funciones core (`core/functions.asp`) y funciones de autenticación/seguridad (`core/auth.asp`).
   * Archivo de script de base de datos SQL Server agregado (`sql/mssql.sql`).
+
+## 2026-05-30 06:00:00
+* **Fase 9: Migración Completa de Consultas UPDATE/INSERT a ADODB.Command en Todos los Módulos**
+  * Se migraron todas las consultas `UPDATE` e `INSERT` que usaban concatenación de strings a `ADODB.Command` con parámetros tipados.
+  * **Archivos corregidos**:
+    - `modules/admin/settings.asp`: UPSERT de configuración migrado a comandos parametrizados.
+    - `modules/users/form.asp`: Actualización de contraseña migrada a comando parametrizado.
+    - `modules/users/profile.asp`: Cambio de contraseña migrado a comando parametrizado.
+    - `modules/users/index.asp`: Desactivación de usuarios migrada a comando parametrizado.
+    - `modules/work_orders/form.asp`: Actualización de `completed_at` y `closed_by_id` migrada a comando parametrizado.
+    - `modules/assets_module/index.asp`: Retiro de equipos migrado a comando parametrizado.
+    - `modules/plants/index.asp`: Desactivación de plantas migrada a comando parametrizado.
+    - `modules/inventory/form.asp`: Creación de stock inicial migrada a comando parametrizado.
+    - `modules/inventory/movements.asp`: Actualización/creación de stock migrada a comandos parametrizados.
+  * **Resultado**: **100% de consultas de escritura (INSERT/UPDATE) parametrizadas** en todos los módulos del sistema, eliminando completamente el riesgo de SQL Injection en operaciones de modificación de datos.
+

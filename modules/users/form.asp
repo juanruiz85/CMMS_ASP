@@ -75,7 +75,7 @@ If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
         
         ' Update password if provided
         If uPass <> "" Then
-            Dim newSalt, newHash
+            Dim newSalt, newHash, cmdPass
             Randomize
             Dim saltChars : saltChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
             Dim j, saltStr : saltStr = ""
@@ -85,7 +85,14 @@ If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
             newSalt = saltStr
             newHash = SHA256Hash(uPass & newSalt)
             
-            oConn.Execute("UPDATE cmms_users SET password='" & newHash & "', password_salt='" & newSalt & "' WHERE id=" & itemId)
+            Set cmdPass = Server.CreateObject("ADODB.Command")
+            Set cmdPass.ActiveConnection = oConn
+            cmdPass.CommandText = "UPDATE cmms_users SET password=?, password_salt=? WHERE id=?"
+            cmdPass.Parameters.Append cmdPass.CreateParameter("@pass", 200, 1, 64, newHash)
+            cmdPass.Parameters.Append cmdPass.CreateParameter("@salt", 200, 1, 50, newSalt)
+            cmdPass.Parameters.Append cmdPass.CreateParameter("@id", 3, 1, , itemId)
+            cmdPass.Execute
+            Set cmdPass = Nothing
         End If
         
         LogActivity CurrentUserId(), "UPDATE_USER", "Actualizó usuario: " & uUser, "users", itemId

@@ -47,7 +47,7 @@ If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
         Dim currentPass : currentPass = Trim(Request.Form("current_password"))
         Dim newPass     : newPass     = Trim(Request.Form("new_password"))
         
-        Dim rsPass
+        Dim rsPass, cmdPassUpd
         Set rsPass = oConn.Execute("SELECT password, password_salt FROM cmms_users WHERE id=" & userId)
         If Not rsPass.EOF Then
             Dim currHash : currHash = SHA256Hash(currentPass & rsPass("password_salt"))
@@ -62,7 +62,15 @@ If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
                 newSalt = saltStr
                 newHash = SHA256Hash(newPass & newSalt)
                 
-                oConn.Execute("UPDATE cmms_users SET password='" & newHash & "', password_salt='" & newSalt & "' WHERE id=" & userId)
+                Set cmdPassUpd = Server.CreateObject("ADODB.Command")
+                Set cmdPassUpd.ActiveConnection = oConn
+                cmdPassUpd.CommandText = "UPDATE cmms_users SET password=?, password_salt=? WHERE id=?"
+                cmdPassUpd.Parameters.Append cmdPassUpd.CreateParameter("@pass", 200, 1, 64, newHash)
+                cmdPassUpd.Parameters.Append cmdPassUpd.CreateParameter("@salt", 200, 1, 50, newSalt)
+                cmdPassUpd.Parameters.Append cmdPassUpd.CreateParameter("@id", 3, 1, , userId)
+                cmdPassUpd.Execute
+                Set cmdPassUpd = Nothing
+                
                 SetFlashMessage "success", "Contraseña cambiada correctamente."
             Else
                 SetFlashMessage "danger", "La contraseña actual es incorrecta."

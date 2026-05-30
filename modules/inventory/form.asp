@@ -121,7 +121,14 @@ If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
         rsId.Close : Set rsId = Nothing
         
         ' Crear registro en stock
-        oConn.Execute("INSERT INTO cmms_inventory_stock (inventory_id, plant_id, quantity, last_updated) VALUES (" & newId & ", " & iPlantId & ", 0, GETDATE())")
+        Dim cmdStock
+        Set cmdStock = Server.CreateObject("ADODB.Command")
+        Set cmdStock.ActiveConnection = oConn
+        cmdStock.CommandText = "INSERT INTO cmms_inventory_stock (inventory_id, plant_id, quantity, last_updated) VALUES (?, ?, 0, GETDATE())"
+        cmdStock.Parameters.Append cmdStock.CreateParameter("@inv_id", 3, 1, , newId)
+        cmdStock.Parameters.Append cmdStock.CreateParameter("@plant_id", 3, 1, , iPlantId)
+        cmdStock.Execute
+        Set cmdStock = Nothing
         
         LogActivity CurrentUserId(), "CREATE_INV", "Creó artículo: " & iName, "inventory", newId
     End If

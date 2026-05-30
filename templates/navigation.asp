@@ -292,7 +292,10 @@ End Function
         </div>
         <%   oRSNotif.MoveNext
         Loop
-        oRSNotif.Close %>
+        oRSNotif.Close 
+        Set oRSNotif = Nothing
+        CloseConnection oConnNotif
+        %>
         <% End If %>
         <div class="dropdown-divider"></div>
         <a href="/CMMS/modules/admin/logs.asp" class="dropdown-item" style="justify-content:center;font-size:12px">

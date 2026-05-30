@@ -35,9 +35,12 @@ If Not IsSessionValid() Then
     Response.End
 End If
 
-' Contar notificaciones no leídas (solo si la sesión es válida)
+' Contar notificaciones no leídas (solo si el usuario es válido)
 Dim UnreadNotifCount : UnreadNotifCount = 0
-UnreadNotifCount = CountUnreadNotifications(CurrentUserId())
+Dim currentUserId : currentUserId = CurrentUserId()
+If currentUserId > 0 Then
+    UnreadNotifCount = CountUnreadNotifications(currentUserId)
+End If
 
 
 %><!DOCTYPE html>

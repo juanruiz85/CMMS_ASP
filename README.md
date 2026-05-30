@@ -109,6 +109,7 @@ C:\CMMS\
 ├── install.asp            # Instalador web
 ├── CHANGELOG.md           # Historial de cambios
 ├── GEMINI_CONTEXT.md      # Contexto para desarrollo guiado por IA (Gemini)
+├── CONTRIBUTING.md        # Reglas de desarrollo y estándares de código
 └── README.md              # Este archivo
 ```
 

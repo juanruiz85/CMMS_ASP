@@ -77,20 +77,52 @@ C:\CMMS\
 
 ---
 
+## 📋 Archivos de Referencia para Desarrollo
+
+- **`CONTRIBUTING.md`** → Reglas de desarrollo, seguridad, estándares de código y checklist de verificación. **LEER ANTES DE EMPEZAR A TRABAJAR**.
+- **`GEMINI_CONTEXT.md`** (este archivo) → Estado actual del proyecto, próximos pasos y contexto para IA.
+- **`README.md`** → Estructura del proyecto, requisitos del sistema e instrucciones de instalación.
+- **`CHANGELOG.md`** → Historial completo de cambios del sistema.
+
+---
+
 ## 🔄 Últimos Cambios Realizados
 
-- **Sincronización de Esquemas SQL**: Se corrigieron las inconsistencias de los scripts SQL (`mssql.sql`, `mysql.sql`, `sqlite.sql`) para incluir las tablas `cmms_work_requests` y `cmms_scheduled_reports` de forma consistente.
-- **Sanitización de Esquemas**: Se resolvió una corrupción de caracteres (doble espaciado UTF-16) detectada al final de `sql/mssql.sql`, logrando que todas las sentencias se ejecuten de manera nativa sin fallas.
-- **Creación de Contexto Gemini**: Creación de este archivo para la continuación fluida del proyecto.
+### Fase 6 (2026-05-30 04:40): Auditoría de Seguridad en Módulos Core
+- **Auditoría completa** de los módulos `work_orders/` e `inventory/` detectando **6 vulnerabilidades de inyección SQL**.
+- **Correcciones aplicadas**:
+  - `work_orders/index.asp`: Delete action migrado a ADODB.Command parametrizado.
+  - `work_orders/detail.asp (change_status)`: Reemplazado escape manual por consulta parametrizada.
+  - `work_orders/detail.asp (completed_at update)`: Parametrizada actualización automática.
+  - `work_orders/detail.asp (actual_hours update)`: Parametrizada subconsulta SUM.
+  - `work_orders/detail.asp (add_time)`: Agregado parámetro @h tipado (adDouble) para horas.
+  - `inventory/index.asp`: Delete action migrado a ADODB.Command parametrizado.
+- **Archivos creados/actualizados**:
+  - `CONTRIBUTING.md` (NUEVO): Reglas de desarrollo estrictas para IA y desarrolladores.
+  - `GEMINI_CONTEXT.md` (ACTUALIZADO): Contexto completo con referencias y próximos pasos.
+  - `reporte_seguridad.md` (ACTUALIZADO): Tabla detallada de hallazgos y correcciones.
+  - `CHANGELOG.md` (ACTUALIZADO): Nueva entrada Fase 6.
+
+### Fase 5 (2026-05-30 03:20): Sincronización de BD y Contexto IA
+- Sincronización de esquemas SQL (`mssql.sql`, `mysql.sql`, `sqlite.sql`) con tablas `cmms_work_requests` y `cmms_scheduled_reports`.
+- Reparación de corrupción de encoding UTF-16 en `sql/mssql.sql`.
+- Creación de `GEMINI_CONTEXT.md` para continuidad del proyecto.
 
 ---
 
 ## 📌 Próximos Pasos Recomendados (Backlog)
 
-1. **Pruebas del Flujo de Trabajo Completo**:
-   - Crear una solicitud de trabajo como usuario de rol `viewer` o `technician`.
-   - Loguearse como `supervisor` o `admin` para aprobar la solicitud y verificar la generación de la Orden de Trabajo.
-2. **Módulo de Tareas Programadas / Mantenimiento Preventivo**:
-   - Implementar un servicio o script que corra en segundo plano (ej: Tarea Programada de Windows) que lea la tabla `cmms_scheduled_reports` o genere OTs preventivas de manera automática basándose en periodicidades configuradas.
-3. **Mapeo de Rutas de API REST**:
-   - Desarrollar la lógica en la carpeta `api/` para habilitar el consumo móvil por parte de técnicos en campo.
+### Prioridad Alta
+1. **Migración completa de filtros LIKE a ADODB.Command**: En `work_orders/index.asp` e `inventory/index.asp` aún se usa escape manual con `Replace()` para los filtros de búsqueda. Aunque funcional, migrar a consultas parametrizadas para consistencia total de seguridad.
+2. **Agregar validación CSRF en `work_orders/detail.asp`**: Las acciones POST (change_status, add_comment, add_time) actualmente no validan tokens CSRF.
+
+### Prioridad Media
+3. **Pruebas del Flujo de Trabajo Completo**:
+   - Crear solicitud de trabajo como usuario `viewer`/`technician`.
+   - Aprobar como `supervisor` y verificar generación automática de OT.
+   - Completar la OT y verificar actualización de inventario y horas.
+4. **Módulo de Tareas Programadas / Mantenimiento Preventivo**: Implementar servicio en segundo plano usando `cmms_scheduled_reports`.
+
+### Prioridad Baja
+5. **Mapeo de Rutas de API REST**: Desarrollo de `api/` para consumo móvil por técnicos en campo.
+6. **Optimización de consultas KPI**: Las consultas de KPIs en dashboards usan GROUP BY sin parámetros, revisar eficiencia.

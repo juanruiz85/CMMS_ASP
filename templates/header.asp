@@ -16,11 +16,28 @@
 If Len(PageTitle & "") = 0 Then PageTitle = T("app_name")
 If Len(PageModule & "") = 0 Then PageModule = ""
 
+' Verificar que la sesión es verdaderamente válida (no abandonada)
+Function IsSessionValid()
+    IsSessionValid = False
+    ' Session.SessionID cambia después de Session.Abandon
+    ' Verificamos que tengamos valores consistentes de sesión
+    On Error Resume Next
+    If Session("user_id") <> "" And Session("user_id") <> 0 And _
+       Session("user_name") <> "" And Session("last_activity") <> "" Then
+        IsSessionValid = True
+    End If
+    On Error GoTo 0
+End Function
+
+' Si la sesión no es válida, redirigir inmediatamente al login
+If Not IsSessionValid() Then
+    Response.Redirect "/CMMS/login.asp?expired=1"
+    Response.End
+End If
+
 ' Contar notificaciones no leídas (solo si la sesión es válida)
 Dim UnreadNotifCount : UnreadNotifCount = 0
-If Session("user_id") <> "" And Session("user_id") <> 0 Then
-    UnreadNotifCount = CountUnreadNotifications(CurrentUserId())
-End If
+UnreadNotifCount = CountUnreadNotifications(CurrentUserId())
 
 
 %><!DOCTYPE html>

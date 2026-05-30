@@ -35,6 +35,8 @@ Sub CheckAuth()
         Dim minutesInactive
         minutesInactive = DateDiff("n", Session("last_activity"), Now())
         If minutesInactive > SESSION_TIMEOUT Then
+            ' Limpiar todas las variables de sesión manualmente antes de abandonar
+            Session.Contents.RemoveAll()
             Session.Abandon
             Response.Redirect LOGIN_URL & "?expired=1"
             Response.End

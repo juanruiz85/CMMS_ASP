@@ -43,12 +43,9 @@ If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
         End If
     End If
 End If
-
-' Obtener idioma para el tag HTML
-Dim htmlLang : htmlLang = IIf(Session("user_lang") = "en", "en", "es")
 %>
 <!DOCTYPE html>
-<html lang="<%= htmlLang %>">
+<html lang="<%= IIf(Session("user_lang") = "en", "en", "es") %>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">

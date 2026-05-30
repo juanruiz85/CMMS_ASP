@@ -1,6 +1,6 @@
 <%
 ' CMMS - Configuración de Base de Datos (GENERADO POR INSTALADOR)
-' Generado: 5/30/2026 10:25:16 AM
+' Generado: 5/30/2026 11:40:39 AM
 Const DB_TYPE     = "sqlite"
 Const DB_SERVER   = ","
 Const DB_NAME     = "CMMS_DB, cmms_db"

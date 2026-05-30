@@ -10,23 +10,16 @@
 '   <!--#include virtual="/CMMS/core/i18n.asp"-->
 '   <!--#include virtual="/CMMS/core/auth.asp"-->
 
-' Valores por defecto
-If Not IsDefined("PageTitle") Then
-    Dim PageTitle : PageTitle = T("app_name")
-End If
-If Not IsDefined("PageModule") Then
-    Dim PageModule : PageModule = ""
-End If
+' Valores por defecto para PageTitle y PageModule
+' Estas variables deben ser establecidas por la página que incluye este template
+' Si no se establecen, se usan los valores por defecto aquí
+If Len(PageTitle & "") = 0 Then PageTitle = T("app_name")
+If Len(PageModule & "") = 0 Then PageModule = ""
 
 ' Contar notificaciones no leídas
 Dim UnreadNotifCount : UnreadNotifCount = CountUnreadNotifications(CurrentUserId())
 
-Function IsDefined(varName)
-    On Error Resume Next
-    Dim v : v = Eval(varName)
-    IsDefined = (Err.Number = 0)
-    On Error GoTo 0
-End Function
+
 %><!DOCTYPE html>
 <html lang="<%= IIf(Session("user_lang") = "en", "en", "es") %>">
 <head>

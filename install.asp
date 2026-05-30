@@ -2,6 +2,7 @@
 ' =============================================================================
 ' CMMS - Instalador del Sistema (install.asp)
 ' Wizard multi-paso: DB Config → Prueba Conexión → Crear Schema → Admin → Listo
+' Soporta: SQL Server, MySQL, SQLite
 ' =============================================================================
 Option Explicit
 
@@ -39,17 +40,22 @@ If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
 
     ' PASO 2: Probar conexión y guardar config
     If action = "test_save" Then
+        Dim dbType   : dbType   = Trim(Request.Form("db_type"))
         Dim dbServer : dbServer = Trim(Request.Form("db_server"))
         Dim dbName   : dbName   = Trim(Request.Form("db_name"))
         Dim dbUser   : dbUser   = Trim(Request.Form("db_user"))
         Dim dbPass   : dbPass   = Trim(Request.Form("db_pass"))
         Dim dbPort   : dbPort   = Trim(Request.Form("db_port"))
-        If dbPort = "" Then dbPort = "1433"
-
-        ' Probar conexión
-        Dim connStr
-        connStr = "Provider=SQLNCLI11;Server=" & dbServer & ";Database=" & dbName & ";UID=" & dbUser & ";PWD=" & dbPass & ";Connect Timeout=10;"
+        Dim dbFile   : dbFile   = Trim(Request.Form("db_file"))
         
+        If dbType = "" Then dbType = "sqlserver"
+        If dbPort = "" Then dbPort = getDefaultPort(dbType)
+        
+        ' Construir cadena de conexión según tipo de BD
+        Dim connStr
+        connStr = buildConnectionString(dbType, dbServer, dbName, dbUser, dbPass, dbPort, dbFile)
+        
+        ' Probar conexión
         Dim testConn2
         Set testConn2 = Server.CreateObject("ADODB.Connection")
         On Error Resume Next
@@ -60,11 +66,13 @@ If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
         Else
             testConn2.Close
             ' Guardar en sesión para el siguiente paso
-            Session("inst_server") = dbServer
-            Session("inst_name")   = dbName
-            Session("inst_user")   = dbUser
-            Session("inst_pass")   = dbPass
-            Session("inst_port")   = dbPort
+            Session("inst_type")    = dbType
+            Session("inst_server")  = dbServer
+            Session("inst_name")    = dbName
+            Session("inst_user")    = dbUser
+            Session("inst_pass")    = dbPass
+            Session("inst_port")    = dbPort
+            Session("inst_file")    = dbFile
             SuccessMsg = "¡Conexión exitosa! Proceda al siguiente paso."
             Step = "3"
         End If
@@ -85,8 +93,9 @@ If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
         Else
             ' Ejecutar instalación
             Dim instResult : instResult = RunInstaller( _
-                Session("inst_server"), Session("inst_name"), _
-                Session("inst_user"),   Session("inst_pass"), _
+                Session("inst_type"),   Session("inst_server"), Session("inst_name"), _
+                Session("inst_user"),   Session("inst_pass"),   Session("inst_port"), _
+                Session("inst_file"), _
                 adminUser, adminPass, adminEmail, adminFirst, adminLast)
             
             If Left(instResult, 5) = "ERROR" Then
@@ -99,13 +108,14 @@ If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
 End If
 
 ' ─── Función de instalación ────────────────────────────────────────────────────
-Function RunInstaller(dbSrv, dbNm, dbUsr, dbPwd, admUser, admPass, admEmail, admFirst, admLast)
+Function RunInstaller(dbType, dbSrv, dbNm, dbUsr, dbPwd, dbPort, dbFile, admUser, admPass, admEmail, admFirst, admLast)
     Dim oConn, oFS, schemaPath, schemaSQL, sLines, i
     
     On Error Resume Next
     
-    ' 1. Conectar
-    Dim cs : cs = "Provider=SQLNCLI11;Server=" & dbSrv & ";Database=" & dbNm & ";UID=" & dbUsr & ";PWD=" & dbPwd & ";Connect Timeout=30;"
+    ' 1. Conectar según tipo de BD
+    Dim cs
+    cs = buildConnectionString(dbType, dbSrv, dbNm, dbUsr, dbPwd, dbPort, dbFile)
     Set oConn = Server.CreateObject("ADODB.Connection")
     oConn.Open cs
     If Err.Number <> 0 Then
@@ -113,8 +123,18 @@ Function RunInstaller(dbSrv, dbNm, dbUsr, dbPwd, admUser, admPass, admEmail, adm
         Exit Function
     End If
 
-    ' 2. Ejecutar schema SQL (mssql.sql)
-    schemaPath = Server.MapPath("/CMMS/sql/mssql.sql")
+    ' 2. Determinar archivo de schema según tipo de BD
+    Select Case LCase(dbType)
+        Case "sqlserver"
+            schemaPath = Server.MapPath("/CMMS/sql/mssql.sql")
+        Case "mysql"
+            schemaPath = Server.MapPath("/CMMS/sql/mysql.sql")
+        Case "sqlite"
+            schemaPath = Server.MapPath("/CMMS/sql/sqlite.sql")
+        Case Else
+            schemaPath = Server.MapPath("/CMMS/sql/mssql.sql")
+    End Select
+    
     Set oFS = Server.CreateObject("Scripting.FileSystemObject")
     
     If Not oFS.FileExists(schemaPath) Then
@@ -225,21 +245,49 @@ Function RunInstaller(dbSrv, dbNm, dbUsr, dbPwd, admUser, admPass, admEmail, adm
     Dim configPath : configPath = Server.MapPath("/CMMS/config/database.asp")
     Dim oConfigFile : Set oConfigFile = oFS2.CreateTextFile(configPath, True)
     
+    Dim dbProvider, dbPortConst
+    Select Case LCase(dbType)
+        Case "sqlserver"
+            dbProvider = "SQLNCLI11"
+            dbPortConst = IIf(dbPort <> "", dbPort, "1433")
+        Case "mysql"
+            dbProvider = "MySQL.OLEDB.1"
+            dbPortConst = IIf(dbPort <> "", dbPort, "3306")
+        Case "sqlite"
+            dbProvider = ""
+            dbPortConst = ""
+        Case Else
+            dbProvider = "SQLNCLI11"
+            dbPortConst = "1433"
+    End Select
+    
     oConfigFile.WriteLine "<" & "%"
     oConfigFile.WriteLine "' CMMS - Configuración de Base de Datos (GENERADO POR INSTALADOR)"
     oConfigFile.WriteLine "' Generado: " & Now()
-    oConfigFile.WriteLine "Const DB_TYPE     = ""sqlserver"""
+    oConfigFile.WriteLine "Const DB_TYPE     = """ & dbType & """"
     oConfigFile.WriteLine "Const DB_SERVER   = """ & Replace(dbSrv, """", "") & """"
     oConfigFile.WriteLine "Const DB_NAME     = """ & Replace(dbNm, """", "") & """"
     oConfigFile.WriteLine "Const DB_USER     = """ & Replace(dbUsr, """", "") & """"
     oConfigFile.WriteLine "Const DB_PASS     = """ & Replace(dbPwd, """", "") & """"
-    oConfigFile.WriteLine "Const DB_PORT     = 1433"
-    oConfigFile.WriteLine "Const DB_PROVIDER = ""SQLNCLI11"""
+    oConfigFile.WriteLine "Const DB_PORT     = " & dbPortConst
+    oConfigFile.WriteLine "Const DB_PROVIDER = """ & dbProvider & """"
     oConfigFile.WriteLine "Const DB_TIMEOUT  = 30"
     oConfigFile.WriteLine "Const DB_APP_NAME = ""CMMS_System"""
+    If LCase(dbType) = "sqlite" Then
+        oConfigFile.WriteLine "Const DB_FILE     = """ & Replace(dbFile, """", "") & """"
+    End If
     oConfigFile.WriteLine ""
     oConfigFile.WriteLine "Function GetConnectionString()"
-    oConfigFile.WriteLine "    GetConnectionString = ""Provider="" & DB_PROVIDER & "";Server="" & DB_SERVER & "";Database="" & DB_NAME & "";UID="" & DB_USER & "";PWD="" & DB_PASS & "";Connect Timeout="" & DB_TIMEOUT & "";Application Name="" & DB_APP_NAME & "";"""
+    oConfigFile.WriteLine "    Select Case DB_TYPE"
+    oConfigFile.WriteLine "        Case ""sqlserver"""
+    oConfigFile.WriteLine "            GetConnectionString = ""Provider="" & DB_PROVIDER & "";Server="" & DB_SERVER & "";Database="" & DB_NAME & "";UID="" & DB_USER & "";PWD="" & DB_PASS & "";Connect Timeout="" & DB_TIMEOUT & "";Application Name="" & DB_APP_NAME & "";"""
+    oConfigFile.WriteLine "        Case ""mysql"""
+    oConfigFile.WriteLine "            GetConnectionString = ""Driver={MySQL ODBC 8.0 Unicode Driver};Server="" & DB_SERVER & "";Port="" & DB_PORT & "";Database="" & DB_NAME & "";Uid="" & DB_USER & "";Pwd="" & DB_PASS & "";Option=3;"""
+    oConfigFile.WriteLine "        Case ""sqlite"""
+    oConfigFile.WriteLine "            GetConnectionString = ""Driver={SQLite3 ODBC Driver};Database="" & DB_FILE & "";"""
+    oConfigFile.WriteLine "        Case Else"
+    oConfigFile.WriteLine "            GetConnectionString = """""
+    oConfigFile.WriteLine "    End Select"
     oConfigFile.WriteLine "End Function"
     oConfigFile.WriteLine ""
     oConfigFile.WriteLine "Function GetConnection()"
@@ -286,6 +334,36 @@ Function SHA256Hash_Install(strText)
     If Err.Number <> 0 Then SHA256Hash_Install = strText  ' Fallback
     Set oSHA = Nothing : Set oEncoding = Nothing
     On Error GoTo 0
+End Function
+
+' Obtener puerto por defecto según tipo de BD
+Function getDefaultPort(dbType)
+    Select Case LCase(dbType)
+        Case "sqlserver"
+            getDefaultPort = "1433"
+        Case "mysql"
+            getDefaultPort = "3306"
+        Case "sqlite"
+            getDefaultPort = ""
+        Case Else
+            getDefaultPort = "1433"
+    End Select
+End Function
+
+' Construir cadena de conexión según tipo de BD
+Function buildConnectionString(dbType, dbServer, dbName, dbUser, dbPass, dbPort, dbFile)
+    Select Case LCase(dbType)
+        Case "sqlserver"
+            If dbPort = "" Then dbPort = "1433"
+            buildConnectionString = "Provider=SQLNCLI11;Server=" & dbServer & ";Database=" & dbName & ";UID=" & dbUser & ";PWD=" & dbPass & ";Connect Timeout=30;"
+        Case "mysql"
+            If dbPort = "" Then dbPort = "3306"
+            buildConnectionString = "Driver={MySQL ODBC 8.0 Unicode Driver};Server=" & dbServer & ";Port=" & dbPort & ";Database=" & dbName & ";Uid=" & dbUser & ";Pwd=" & dbPass & ";Option=3;"
+        Case "sqlite"
+            buildConnectionString = "Driver={SQLite3 ODBC Driver};Database=" & dbFile & ";"
+        Case Else
+            buildConnectionString = "Provider=SQLNCLI11;Server=" & dbServer & ";Database=" & dbName & ";UID=" & dbUser & ";PWD=" & dbPass & ";Connect Timeout=30;"
+    End Select
 End Function
 %>
 <!DOCTYPE html>
@@ -371,30 +449,36 @@ End Function
           <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Microsoft SQL Server<br>2016+</div>
           <div style="margin-top:8px"><span class="badge badge-success no-dot">Recomendado</span></div>
         </div>
-        <div class="db-type-card" id="card-mysql" onclick="selectDB('mysql')" style="opacity:0.5;pointer-events:none">
+        <div class="db-type-card" id="card-mysql" onclick="selectDB('mysql')">
           <div class="db-type-icon">🐬</div>
           <div style="font-weight:600;color:var(--text-primary)">MySQL</div>
           <div style="font-size:12px;color:var(--text-muted);margin-top:4px">MySQL 5.7+<br>MariaDB</div>
-          <div style="margin-top:8px"><span class="badge badge-muted no-dot">Próximamente</span></div>
+          <div style="margin-top:8px"><span class="badge badge-success no-dot">Disponible</span></div>
         </div>
-        <div class="db-type-card" id="card-sqlite" onclick="selectDB('sqlite')" style="opacity:0.5;pointer-events:none">
+        <div class="db-type-card" id="card-sqlite" onclick="selectDB('sqlite')">
           <div class="db-type-icon">📁</div>
           <div style="font-weight:600;color:var(--text-primary)">SQLite</div>
           <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Archivo local<br>Sin servidor</div>
-          <div style="margin-top:8px"><span class="badge badge-muted no-dot">Próximamente</span></div>
+          <div style="margin-top:8px"><span class="badge badge-success no-dot">Disponible</span></div>
         </div>
       </div>
+      
+      <!-- Campo oculto para tipo de BD seleccionado -->
+      <input type="hidden" name="db_type" id="selected_db_type" value="sqlserver">
+      
       <div style="background:var(--primary-light);border:1px solid rgba(99,102,241,0.3);border-radius:10px;padding:16px;margin-bottom:24px">
         <div style="font-weight:600;color:var(--primary);margin-bottom:8px">📋 Requisitos previos</div>
         <ul style="color:var(--text-secondary);font-size:13px;padding-left:20px;line-height:2">
-          <li>SQL Server 2016 o superior instalado</li>
-          <li>SQL Server Native Client 11 (SQLNCLI11) instalado en el servidor IIS</li>
-          <li>Usuario SQL con permisos CREATE TABLE, INSERT, UPDATE, DELETE</li>
-          <li>La base de datos puede existir previamente o se usará la especificada</li>
+          <li id="req-sqlserver"><strong>SQL Server:</strong> SQL Server 2016+ o Express instalado</li>
+          <li id="req-sqlserver2">SQL Server Native Client 11 (SQLNCLI11) en IIS</li>
+          <li id="req-mysql" style="display:none"><strong>MySQL:</strong> MySQL 5.7+ o MariaDB 10.3+</li>
+          <li id="req-mysql2" style="display:none">MySQL ODBC 8.0 Unicode Driver instalado en IIS</li>
+          <li id="req-sqlite" style="display:none"><strong>SQLite:</strong> SQLite3 ODBC Driver instalado</li>
+          <li id="req-common">Usuario con permisos CREATE TABLE, INSERT, UPDATE, DELETE</li>
         </ul>
       </div>
       <div style="text-align:right">
-        <a href="?step=2" class="btn btn-primary">
+        <a href="?step=2" class="btn btn-primary" onclick="return validateStep1()">
           Continuar
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
         </a>
@@ -543,10 +627,29 @@ End Function
 
 <script src="/CMMS/assets/js/app.js"></script>
 <script>
+let currentDBType = 'sqlserver';
+
 function selectDB(type) {
+    currentDBType = type;
     document.querySelectorAll('.db-type-card').forEach(c => c.classList.remove('selected'));
     document.getElementById('card-' + type).classList.add('selected');
+    
+    // Actualizar campo oculto
+    document.getElementById('selected_db_type').value = type;
+    
+    // Mostrar requisitos específicos
+    document.getElementById('req-sqlserver').style.display = (type === 'sqlserver') ? '' : 'none';
+    document.getElementById('req-sqlserver2').style.display = (type === 'sqlserver') ? '' : 'none';
+    document.getElementById('req-mysql').style.display = (type === 'mysql') ? '' : 'none';
+    document.getElementById('req-mysql2').style.display = (type === 'mysql') ? '' : 'none';
+    document.getElementById('req-sqlite').style.display = (type === 'sqlite') ? '' : 'none';
 }
+
+function validateStep1() {
+    // Guardar el tipo seleccionado en la sesión para el paso 2
+    return true;
+}
+
 document.getElementById('connForm') && document.getElementById('connForm').addEventListener('submit', function(){
     const btn = document.getElementById('testBtn');
     if(btn) { btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px;margin-right:8px"></span>Probando...'; btn.disabled = true; }

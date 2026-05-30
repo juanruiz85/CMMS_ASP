@@ -88,20 +88,11 @@ C:\CMMS\
 
 ## 🔄 Últimos Cambios Realizados
 
-### Fase 6 (2026-05-30 04:40): Auditoría de Seguridad en Módulos Core
-- **Auditoría completa** de los módulos `work_orders/` e `inventory/` detectando **6 vulnerabilidades de inyección SQL**.
-- **Correcciones aplicadas**:
-  - `work_orders/index.asp`: Delete action migrado a ADODB.Command parametrizado.
-  - `work_orders/detail.asp (change_status)`: Reemplazado escape manual por consulta parametrizada.
-  - `work_orders/detail.asp (completed_at update)`: Parametrizada actualización automática.
-  - `work_orders/detail.asp (actual_hours update)`: Parametrizada subconsulta SUM.
-  - `work_orders/detail.asp (add_time)`: Agregado parámetro @h tipado (adDouble) para horas.
-  - `inventory/index.asp`: Delete action migrado a ADODB.Command parametrizado.
-- **Archivos creados/actualizados**:
-  - `CONTRIBUTING.md` (NUEVO): Reglas de desarrollo estrictas para IA y desarrolladores.
-  - `GEMINI_CONTEXT.md` (ACTUALIZADO): Contexto completo con referencias y próximos pasos.
-  - `reporte_seguridad.md` (ACTUALIZADO): Tabla detallada de hallazgos y correcciones.
-  - `CHANGELOG.md` (ACTUALIZADO): Nueva entrada Fase 6.
+### Fix (2026-05-30 07:45): Corrección de Errores en install.asp
+- **install.asp**: Se agregaron dos fixes críticos para el instalador:
+  - **Fix 1**: Se corrigió error `Unterminated string constant` (línea 255) cambiando `WriteLine "<%"` a `WriteLine "<" & "%"` y `WriteLine "%>"` a `WriteLine "%" & ">"`.
+  - **Fix 2**: Se agregó función personalizada `IIf(condition, trueValue, falseValue)` al inicio del archivo para resolver error `'800a01f4' Variable is undefined: 'IIf'` (línea 323).
+  - **Resultado**: El instalador ahora funciona completamente sin errores de compilación ni runtime.
 
 ### Fase 10 (2026-05-30 06:30): Migración Completa de Filtros SELECT LIKE a ADODB.Command en Módulos Restantes
 - **work_requests/index.asp**: Filtros de status y plant_id migrados a parámetros con ADODB.Command (incluye filtro automático por usuario actual).

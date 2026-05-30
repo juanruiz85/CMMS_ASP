@@ -1,5 +1,12 @@
 # Changelog del Sistema CMMS
 
+## 2026-05-30 07:45:00
+* **Fix: Agregar función IIf personalizada en install.asp**
+  * Se agregó la función `IIf(condition, trueValue, falseValue)` al inicio del archivo `install.asp`.
+  * **Problema**: VBScript no incluye la función `IIf` nativamente como VBA, causando error `'800a01f4' Variable is undefined: 'IIf'` en la línea 323.
+  * **Solución**: Se implementó la función personalizada al inicio del archivo para dar soporte a las expresiones condicionales usadas en el wizard de instalación.
+  * **Resultado**: El instalador ahora funciona correctamente mostrando los estados de los pasos (activo, completado, pendiente) sin errores de runtime.
+
 ## 2026-05-30 07:15:00
 * **Fix: Correccion de error de sintaxis en install.asp**
   * Se corrigio el error `Unterminated string constant` en la linea 255 de `install.asp`.

@@ -1,1 +1,29 @@
-Nothing should be ignored based on the provided file changes. The modified file 'install.asp' is a source code file that should not be added to .gitignore.
+```
+# Compiled and binary files
+*.asp~
+*.aspx~
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Backup files
+*~
+\#*\#
+```

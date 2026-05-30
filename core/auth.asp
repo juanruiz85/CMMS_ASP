@@ -142,11 +142,11 @@ Function DoLogin(username, plainPassword)
                 Session("user_lang") = "es"
             End If
 
-            ' Actualizar último login en BD
+            ' Actualizar último login en BD (compatible multi-BD)
             Dim oCmd2
             Set oCmd2 = Server.CreateObject("ADODB.Command")
             Set oCmd2.ActiveConnection = oConn
-            oCmd2.CommandText = "UPDATE cmms_users SET last_login = GETDATE() WHERE id = ?"
+            oCmd2.CommandText = "UPDATE cmms_users SET last_login = " & GetDateSQL() & " WHERE id = ?"
             oCmd2.Parameters.Append oCmd2.CreateParameter("@id", 203, 1, 4, Session("user_id"))
             oCmd2.Execute
             Set oCmd2 = Nothing

@@ -4,6 +4,48 @@
 ' Requiere: config/database.asp
 ' =============================================================================
 
+' --- FUNCIONES COMPATIBLES MULTI-BD ---
+
+' Obtener función de fecha actual según tipo de BD
+Function GetDateSQL()
+    Dim dbType
+    dbType = LCase(GetDBType())
+    Select Case dbType
+        Case "mysql"
+            GetDateSQL = "NOW()"
+        Case "sqlite"
+            GetDateSQL = "datetime('now')"
+        Case Else  ' sqlserver
+            GetDateSQL = "GETDATE()"
+    End Select
+End Function
+
+' Obtener último ID insertado según tipo de BD
+Function GetLastInsertID(oConn)
+    Dim dbType, rs, lastId
+    dbType = LCase(GetDBType())
+    Select Case dbType
+        Case "mysql"
+            Set rs = oConn.Execute("SELECT LAST_INSERT_ID() AS id")
+        Case "sqlite"
+            Set rs = oConn.Execute("SELECT last_insert_rowid() AS id")
+        Case Else  ' sqlserver
+            Set rs = oConn.Execute("SELECT SCOPE_IDENTITY() AS id")
+    End Select
+    lastId = rs("id")
+    rs.Close
+    Set rs = Nothing
+    GetLastInsertID = lastId
+End Function
+
+' Obtener tipo de base de datos actual
+Function GetDBType()
+    On Error Resume Next
+    GetDBType = DB_TYPE
+    If Err.Number <> 0 Then GetDBType = "sqlserver"
+    On Error GoTo 0
+End Function
+
 ' --- HASHING SHA-256 (via .NET Framework COM, disponible en WS2012 R2+) ---
 Function SHA256Hash(strText)
     On Error Resume Next

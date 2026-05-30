@@ -115,10 +115,8 @@ If Request.ServerVariables("REQUEST_METHOD") = "POST" Then
         cmd.Parameters.Append cmd.CreateParameter("@status", 200, 1, 20, iStatus)
         cmd.Execute
         
-        ' Obtener el ID insertado (SQL Server)
-        Dim rsId : Set rsId = oConn.Execute("SELECT @@IDENTITY AS id")
-        Dim newId : newId = rsId("id")
-        rsId.Close : Set rsId = Nothing
+        ' Obtener el ID insertado (compatible multi-BD)
+        Dim newId : newId = GetLastInsertID(oConn)
         
         ' Crear registro en stock
         Dim cmdStock

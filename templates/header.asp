@@ -16,8 +16,11 @@
 If Len(PageTitle & "") = 0 Then PageTitle = T("app_name")
 If Len(PageModule & "") = 0 Then PageModule = ""
 
-' Contar notificaciones no leídas
-Dim UnreadNotifCount : UnreadNotifCount = CountUnreadNotifications(CurrentUserId())
+' Contar notificaciones no leídas (solo si la sesión es válida)
+Dim UnreadNotifCount : UnreadNotifCount = 0
+If Session("user_id") <> "" And Session("user_id") <> 0 Then
+    UnreadNotifCount = CountUnreadNotifications(CurrentUserId())
+End If
 
 
 %><!DOCTYPE html>

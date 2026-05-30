@@ -88,6 +88,22 @@ C:\CMMS\
 
 ## 🔄 Últimos Cambios Realizados
 
+### Fix (2026-05-30 09:30): Corrección Completa del Formulario Multi-BD en install.asp
+- **install.asp**: Se completó la implementación del formulario dinámico para cada tipo de base de datos.
+  - **Problema persistente**: Aunque se había implementado renderizado server-side, el Paso 1 no enviaba correctamente el tipo de BD seleccionado al Paso 2 porque usaba un enlace `<a>` en lugar de un formulario POST.
+  - **Solución final implementada**:
+    * El Paso 1 ahora usa un elemento `<form method="POST">` que envía el tipo de BD seleccionado directamente al Paso 2
+    * Se eliminó la función `validateStep1()` innecesaria y se reemplazó con envío nativo de formulario
+    * La inicialización JavaScript ahora maneja correctamente ambos pasos:
+      - Paso 1: Inicializa los requisitos según la BD seleccionada
+      - Paso 2: Inicializa los campos del formulario según el tipo de BD recibido por POST
+    * Se mejoró la detección de elementos en JavaScript usando selectores más específicos
+  - **Resultado definitivo**: 
+    * **SQL Server**: Muestra servidor, base de datos, usuario y contraseña (sin puerto)
+    * **MySQL**: Muestra servidor, puerto, base de datos, usuario y contraseña
+    * **SQLite**: Solo muestra ruta del archivo .db con información sobre creación automática
+    * Cada configuración es específica para el tipo de dato correcto, eliminando completamente la confusión del usuario.
+
 ### Fix (2026-05-30 09:00): Renderizado Server-Side de Campos Según Tipo de BD en install.asp
 - **install.asp**: Se corrigió el problema donde al seleccionar SQLite o MySQL en el instalador, se seguían mostrando los campos de SQL Server.
   - **Problema raíz**: La lógica JavaScript para mostrar/ocultar campos no se ejecutaba correctamente al cargar la página en el Paso 2, mostrando siempre los campos de SQL Server independientemente del tipo de BD seleccionado en el Paso 1.

@@ -4,6 +4,17 @@
 ' Requiere: config/database.asp
 ' =============================================================================
 
+' --- FUNCIONES AUXILIARES ---
+
+' Función IIf (Immediate If) - Retorna un valor basado en una condición
+Function IIf(condition, trueValue, falseValue)
+    If condition Then
+        IIf = trueValue
+    Else
+        IIf = falseValue
+    End If
+End Function
+
 ' --- FUNCIONES COMPATIBLES MULTI-BD ---
 
 ' Obtener función de fecha actual según tipo de BD

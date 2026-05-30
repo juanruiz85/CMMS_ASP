@@ -137,14 +137,6 @@ CREATE TABLE cmms_roles (
     created_at DATETIME2 DEFAULT SYSUTCDATETIME()
 );
 
-IF OBJECT_ID('cmms_settings', 'U') IS NULL
-CREATE TABLE cmms_settings (
-    [key] VARCHAR(150) PRIMARY KEY,
-    [value] NVARCHAR(MAX),
-    description NVARCHAR(255),
-    updated_at DATETIME2 DEFAULT SYSUTCDATETIME()
-);
-
 IF OBJECT_ID('cmms_activity_logs', 'U') IS NULL
 CREATE TABLE cmms_activity_logs (
     id INT IDENTITY(1,1) PRIMARY KEY,
@@ -253,3 +245,57 @@ CREATE TABLE cmms_purchase_requests (
     FOREIGN KEY (requested_by_id) REFERENCES cmms_users(id),
     FOREIGN KEY (approved_by_id) REFERENCES cmms_users(id)
 );
+
+IF OBJECT_ID('cmms_work_requests', 'U') IS NULL
+CREATE TABLE cmms_work_requests (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description NVARCHAR(MAX),
+    asset_id INT,
+    plant_id INT NOT NULL,
+    requested_by_id INT NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending', -- pending, approved, rejected
+    is_automatic BIT DEFAULT 0,
+    created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+    approved_at DATETIME2,
+    approved_by_id INT,
+    work_order_id INT,
+    FOREIGN KEY (requested_by_id) REFERENCES cmms_users(id),
+    FOREIGN KEY (approved_by_id) REFERENCES cmms_users(id),
+    FOREIGN KEY (work_order_id) REFERENCES cmms_work_orders(id),
+    FOREIGN KEY (plant_id) REFERENCES cmms_plants(id)
+);
+
+IF OBJECT_ID('cmms_scheduled_reports', 'U') IS NULL
+CREATE TABLE cmms_scheduled_reports (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    name VARCHAR(200) NOT NULL,
+    query_type VARCHAR(50) NOT NULL,
+    format VARCHAR(20) DEFAULT 'csv', -- csv, excel
+    frequency VARCHAR(20) DEFAULT 'daily', -- daily, weekly, monthly
+    email_to NVARCHAR(MAX) NOT NULL,
+    last_run DATETIME2,
+    next_run DATETIME2,
+    status VARCHAR(20) DEFAULT 'active',
+    created_at DATETIME2 DEFAULT SYSUTCDATETIME()
+);
+
+-- Fix cmms_settings table to match settings.asp implementation
+IF OBJECT_ID('cmms_settings', 'U') IS NOT NULL
+    DROP TABLE cmms_settings;
+
+CREATE TABLE cmms_settings (
+    company_name VARCHAR(150),
+    timezone VARCHAR(50) DEFAULT 'UTC',
+    currency VARCHAR(10) DEFAULT 'USD',
+    session_timeout INT DEFAULT 60,
+    smtp_host VARCHAR(200),
+    smtp_port INT,
+    smtp_user VARCHAR(100),
+    smtp_pass VARCHAR(100),
+    smtp_ssl BIT DEFAULT 0,
+    smtp_from VARCHAR(100)
+);
+
+-- Insert default settings
+INSERT INTO cmms_settings (company_name, session_timeout) VALUES ('CMMS System', 60);

@@ -133,6 +133,22 @@ End Function
       <span class="nav-label"><%= T("nav_reports") %></span>
     </a>
 
+    <!-- Solicitudes de Trabajo -->
+    <a href="/CMMS/modules/work_requests/index.asp"
+       class="nav-item <%= IIf(PageModule = "work_requests", "active", "") %>"
+       data-path="work_requests"
+       title="Solicitudes">
+      <span class="nav-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <path d="M12 18v-6"/>
+          <path d="M9 15h6"/>
+        </svg>
+      </span>
+      <span class="nav-label">Solicitudes</span>
+    </a>
+
     <!-- Sección: Admin (solo admin/supervisor) -->
     <% If IsSupervisorOrAdmin() Then %>
     <div class="nav-section-label"><%= T("nav_admin") %></div>

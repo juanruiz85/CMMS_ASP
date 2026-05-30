@@ -441,6 +441,56 @@ Function FormStr(param)
     FormStr = Trim(Request.Form(param))
 End Function
 
+' Obtener form field como integer seguro
+Function QSIntForm(param)
+    Dim v : v = Request.Form(param)
+    If IsNumeric(v) Then
+        QSIntForm = CLng(v)
+    Else
+        QSIntForm = 0
+    End If
+End Function
+
+' --- MANEJO GLOBAL DE ERRORES ---
+Const DEBUG_MODE = True ' Cambiar a False en producción
+
+Sub CheckError(contextMsg)
+    If Err.Number <> 0 Then
+        Dim errNum, errDesc, errSrc
+        errNum = Err.Number
+        errDesc = Err.Description
+        errSrc = Err.Source
+        Err.Clear()
+        
+        Response.Clear()
+        Response.Write "<div style='font-family:sans-serif;max-width:800px;margin:40px auto;padding:20px;border:1px solid #f87171;border-radius:8px;background:#fef2f2;color:#991b1b;'>"
+        Response.Write "<h2 style='margin-top:0'>Error de Sistema</h2>"
+        
+        If DEBUG_MODE Or IsAdmin() Then
+            Response.Write "<p><strong>Contexto:</strong> " & HtmlEncode(contextMsg) & "</p>"
+            Response.Write "<p><strong>Error [" & errNum & "]:</strong> " & HtmlEncode(errDesc) & "</p>"
+            Response.Write "<p><strong>Origen:</strong> " & HtmlEncode(errSrc) & "</p>"
+            Response.Write "<hr style='border:none;border-top:1px solid #fca5a5;margin:20px 0'>"
+            Response.Write "<p style='font-size:12px;color:#b91c1c'><em>Esta información técnica se muestra porque el sistema está en modo DEBUG o usted es administrador.</em></p>"
+        Else
+            Response.Write "<p>Ha ocurrido un problema al procesar su solicitud. El error ha sido registrado y el equipo técnico ha sido notificado.</p>"
+            Response.Write "<p>Intente nuevamente más tarde o contacte a soporte técnico indicando el módulo en el que se encontraba.</p>"
+        End If
+        
+        Response.Write "</div>"
+        
+        ' Registrar error silenciosamente si existe la DB (intentar)
+        On Error Resume Next
+        Dim oConn, sqlE
+        Set oConn = GetConnection()
+        sqlE = "INSERT INTO cmms_activity_logs (action, description, entity_type, ip_address, created_at) VALUES ('SYSTEM_ERROR', '" & Replace(Left(contextMsg & " | " & errDesc, 500), "'", "''") & "', 'system', '" & Request.ServerVariables("REMOTE_ADDR") & "', GETDATE())"
+        oConn.Execute(sqlE)
+        On Error GoTo 0
+        
+        Response.End
+    End If
+End Sub
+
 ' Badge HTML para estado de órdenes de trabajo
 Function WOStatusBadge(status)
     Dim cls, lbl

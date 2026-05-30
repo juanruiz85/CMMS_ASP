@@ -99,7 +99,8 @@ C:\CMMS\
 │   ├── inventory/         # Inventario y materiales
 │   ├── users/             # Gestión de usuarios
 │   ├── admin/             # Panel de administración
-│   └── reports/           # Reportes y analytics
+│   ├── reports/           # Reportes y analytics
+│   └── work_requests/     # Solicitudes de trabajo (Bandeja de entrada)
 ├── api/                   # API REST
 ├── uploads/               # Archivos subidos
 ├── index.asp              # Dashboard principal
@@ -107,6 +108,7 @@ C:\CMMS\
 ├── logout.asp             # Cierre de sesión
 ├── install.asp            # Instalador web
 ├── CHANGELOG.md           # Historial de cambios
+├── GEMINI_CONTEXT.md      # Contexto para desarrollo guiado por IA (Gemini)
 └── README.md              # Este archivo
 ```
 

@@ -250,3 +250,35 @@ CREATE TABLE IF NOT EXISTS cmms_purchase_requests (
     FOREIGN KEY (requested_by_id) REFERENCES cmms_users(id),
     FOREIGN KEY (approved_by_id) REFERENCES cmms_users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS cmms_work_requests (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    asset_id INT,
+    plant_id INT NOT NULL,
+    requested_by_id INT NOT NULL,
+    status ENUM('pending','approved','rejected') DEFAULT 'pending',
+    is_automatic TINYINT(1) DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    approved_at DATETIME NULL,
+    approved_by_id INT,
+    work_order_id INT,
+    FOREIGN KEY (requested_by_id) REFERENCES cmms_users(id) ON DELETE CASCADE,
+    FOREIGN KEY (approved_by_id) REFERENCES cmms_users(id) ON DELETE SET NULL,
+    FOREIGN KEY (work_order_id) REFERENCES cmms_work_orders(id) ON DELETE SET NULL,
+    FOREIGN KEY (plant_id) REFERENCES cmms_plants(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS cmms_scheduled_reports (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(200) NOT NULL,
+    query_type VARCHAR(50) NOT NULL,
+    format VARCHAR(20) DEFAULT 'csv', -- csv, excel
+    frequency VARCHAR(20) DEFAULT 'daily', -- daily, weekly, monthly
+    email_to TEXT NOT NULL,
+    last_run DATETIME NULL,
+    next_run DATETIME NULL,
+    status ENUM('active','inactive') DEFAULT 'active',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

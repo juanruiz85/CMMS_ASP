@@ -1,5 +1,12 @@
 # Changelog del Sistema CMMS
 
+## 2026-05-30 03:20:00
+* **Fase 5: Sincronización de Base de Datos y Creación de Contexto de IA**
+  * Se corrigieron inconsistencias en los esquemas SQL (`mssql.sql`, `mysql.sql`, `sqlite.sql`) para incluir las tablas `cmms_work_requests` y `cmms_scheduled_reports` de manera uniforme en todos los motores.
+  * Se reparó la corrupción de fin de archivo en `sql/mssql.sql` (doble espaciado UTF-16).
+  * Se creó el archivo `GEMINI_CONTEXT.md` para facilitar la continuación asistida por IA desde cualquier equipo.
+  * Se actualizó la estructura del proyecto en `README.md` para reflejar el módulo de solicitudes de trabajo (`work_requests/`) y el archivo de contexto.
+
 ## 2026-05-24 08:15:00
 * **Fase 4: Desarrollo de Módulos Core completada (Fallback)**
   * Se implementó el `Dashboard` (`index.asp`) con métricas clave y órdenes de trabajo recientes.

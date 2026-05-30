@@ -249,3 +249,35 @@ CREATE TABLE IF NOT EXISTS cmms_purchase_requests (
     FOREIGN KEY (requested_by_id) REFERENCES cmms_users(id),
     FOREIGN KEY (approved_by_id) REFERENCES cmms_users(id)
 );
+
+CREATE TABLE IF NOT EXISTS cmms_work_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT,
+    asset_id INTEGER,
+    plant_id INTEGER NOT NULL,
+    requested_by_id INTEGER NOT NULL,
+    status TEXT CHECK(status IN ('pending','approved','rejected')) DEFAULT 'pending',
+    is_automatic INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    approved_at DATETIME,
+    approved_by_id INTEGER,
+    work_order_id INTEGER,
+    FOREIGN KEY (requested_by_id) REFERENCES cmms_users(id) ON DELETE CASCADE,
+    FOREIGN KEY (approved_by_id) REFERENCES cmms_users(id) ON DELETE SET NULL,
+    FOREIGN KEY (work_order_id) REFERENCES cmms_work_orders(id) ON DELETE SET NULL,
+    FOREIGN KEY (plant_id) REFERENCES cmms_plants(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS cmms_scheduled_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    query_type TEXT NOT NULL,
+    format TEXT CHECK(format IN ('csv','excel')) DEFAULT 'csv',
+    frequency TEXT CHECK(frequency IN ('daily','weekly','monthly')) DEFAULT 'daily',
+    email_to TEXT NOT NULL,
+    last_run DATETIME,
+    next_run DATETIME,
+    status TEXT CHECK(status IN ('active','inactive')) DEFAULT 'active',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);

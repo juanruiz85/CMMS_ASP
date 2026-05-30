@@ -66,3 +66,6 @@ htmlcov/
 *.tar.xz
 *.tar.zst
 ```
+config/database.asp
+cmms.db
+.gitignore

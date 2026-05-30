@@ -1,5 +1,15 @@
 # Changelog del Sistema CMMS
 
+## 2026-05-30 10:00:00
+* **Fix: Resolver Type mismatch 'IIf' en login.asp línea 48**
+  * Se corrigió el error `Microsoft VBScript runtime error '800a000d' Type mismatch: 'IIf'` en `login.asp`.
+  * **Problema**: La llamada a `IIf()` dentro del tag HTML `<html lang="<%= IIf(...) %>">` causaba un error de tipo en runtime porque VBScript evalúa las expresiones inline de manera diferente a las variables declaradas explícitamente.
+  * **Solución**: 
+    - Mover la evaluación de `IIf()` dentro del bloque de código `<% %>` antes de renderizar el HTML
+    - Asignar el resultado a una variable `htmlLang` que luego se usa en el tag HTML
+    - La función `IIf()` ya está definida correctamente en `core/functions.asp` (líneas 9-16)
+  * **Resultado**: El login.asp ahora carga sin errores y detecta correctamente el idioma del usuario para establecer el atributo `lang` del documento HTML.
+
 ## 2026-05-30 09:00:00
 * **Fix: Renderizado server-side de campos según tipo de BD en install.asp**
   * Se corrigió el problema donde al seleccionar SQLite o MySQL en el instalador, se seguían mostrando los campos de SQL Server.

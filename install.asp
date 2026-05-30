@@ -5,6 +5,15 @@
 ' =============================================================================
 Option Explicit
 
+' Función auxiliar IIf (Immediate If)
+Function IIf(condition, trueValue, falseValue)
+    If condition Then
+        IIf = trueValue
+    Else
+        IIf = falseValue
+    End If
+End Function
+
 ' Bloquear si ya está instalado
 Dim configFile
 configFile = Server.MapPath("/CMMS/config/database.asp")
